@@ -1,0 +1,320 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, Helvetica, sans-serif;
+  background: #f3f5f9;
+  color: #172033;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+.login-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: linear-gradient(135deg, #172033, #243b63);
+}
+
+.login-card {
+  width: min(440px, 100%);
+  background: white;
+  border-radius: 24px;
+  padding: 32px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.22);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 28px;
+}
+
+.brand-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  background: #2563eb;
+  color: white;
+  font-weight: 800;
+}
+
+.brand h1,
+.brand h2,
+.brand p {
+  margin: 0;
+}
+
+.brand h1 {
+  font-size: 26px;
+  color: #172033;
+}
+.login-card .brand {
+  justify-content: center;
+}
+
+.login-card .brand div {
+  text-align: center;
+}
+
+.brand p {
+  color: #6b7280;
+  margin-top: 4px;
+}
+
+form {
+  display: grid;
+  gap: 12px;
+}
+
+label {
+  font-weight: 700;
+  font-size: 14px;
+}
+
+input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 12px;
+  outline: none;
+}
+
+input:focus {
+  border-color: #2563eb;
+}
+
+button {
+  border: 0;
+  background: #2563eb;
+  color: white;
+  padding: 12px 16px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+button:hover {
+  background: #1d4ed8;
+}
+
+.error {
+  background: #fee2e2;
+  color: #991b1b;
+  padding: 12px;
+  border-radius: 12px;
+}
+
+.dashboard-page {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 260px 1fr;
+}
+
+.sidebar {
+  background: #111827;
+  color: white;
+  padding: 24px;
+}
+
+.sidebar-brand .brand-icon {
+  background: #22c55e;
+}
+
+.sidebar h2 {
+  font-size: 20px;
+}
+
+.sidebar p {
+  color: #9ca3af;
+}
+
+.sidebar nav {
+  display: grid;
+  gap: 10px;
+  margin-top: 32px;
+}
+
+.sidebar a {
+  color: #d1d5db;
+  text-decoration: none;
+  padding: 12px 14px;
+  border-radius: 12px;
+}
+
+.sidebar a.active,
+.sidebar a:hover {
+  background: #1f2937;
+  color: white;
+}
+
+.content {
+  padding: 32px;
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  align-items: center;
+  margin-bottom: 28px;
+}
+
+.topbar h1 {
+  margin: 0;
+  font-size: 32px;
+}
+
+.topbar p {
+  margin: 6px 0 0;
+  color: #6b7280;
+}
+
+.user-box {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: white;
+  padding: 10px 12px;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+}
+
+.user-box button {
+  padding: 9px 12px;
+}
+
+.cards-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 18px;
+  margin-bottom: 22px;
+}
+
+.metric-card,
+.panel {
+  background: white;
+  border-radius: 20px;
+  padding: 22px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+}
+
+.metric-card span {
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.metric-card strong {
+  display: block;
+  font-size: 30px;
+  margin: 10px 0;
+}
+
+.metric-card small {
+  color: #9ca3af;
+}
+
+.main-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 22px;
+  margin-bottom: 22px;
+}
+
+.panel h2 {
+  margin-top: 0;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  padding: 14px 10px;
+  border-bottom: 1px solid #e5e7eb;
+  text-align: left;
+}
+
+th {
+  color: #6b7280;
+  font-size: 13px;
+  text-transform: uppercase;
+}
+
+.badge {
+  display: inline-block;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.badge.critica {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.badge.alta {
+  background: #ffedd5;
+  color: #9a3412;
+}
+
+.badge.media {
+  background: #fef9c3;
+  color: #854d0e;
+}
+
+@media (max-width: 950px) {
+  .dashboard-page {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    display: none;
+  }
+
+  .cards-grid,
+  .main-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .topbar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+
+
+  .topbar h1,
+.panel h2 {
+  color: #172033;
+}
+
+.metric-card strong,
+td {
+  color: #0f172a;
+}
+
+th {
+  color: #475569;
+}
+
+.sidebar a {
+  color: #f9fafb;
+}
+
+.sidebar nav a:not(.active) {
+  color: #e5e7eb;
+}
+}
