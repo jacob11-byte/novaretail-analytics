@@ -683,8 +683,11 @@ function App() {
       await cargarDatos();
       await buscarProductosPos();
       setMensaje("Venta POS finalizada correctamente.");
-    } catch {
-      setError("No se pudo finalizar la venta POS. Revisa stock y productos.");
+    } catch (requestError) {
+      setError(
+        requestError.response?.data?.error ||
+          "No se pudo finalizar la venta POS. Revisa stock y productos."
+      );
     }
   }
 
