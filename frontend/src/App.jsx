@@ -42,6 +42,39 @@ const emptyDocumentoVenta = {
   impuesto_porcentaje: 12,
 };
 
+const emptyProducto = {
+  cod_producto: "",
+  nombre: "",
+  categoria: "",
+  tipo: "producto",
+  descripcion: "",
+  stock_minimo: 10,
+  precio_venta: 0,
+  stock_inicial: 0,
+};
+
+const emptyCategoria = {
+  nombre: "",
+  descripcion: "",
+};
+
+const emptyProveedor = {
+  nombre: "",
+  nit: "",
+  telefono: "",
+  email: "",
+  direccion: "",
+};
+
+const emptyCompra = {
+  proveedor_id: "",
+  cod_producto: "",
+  descripcion: "",
+  cantidad: 1,
+  costo_unitario: 0,
+  estado: "borrador",
+};
+
 function App() {
   const [email, setEmail] = useState("admin@novaretail.com");
   const [password, setPassword] = useState("");
@@ -59,10 +92,14 @@ function App() {
   const [cotizaciones, setCotizaciones] = useState([]);
   const [ordenesVenta, setOrdenesVenta] = useState([]);
   const [inventario, setInventario] = useState([]);
+  const [productos, setProductos] = useState([]);
+  const [categoriasProductos, setCategoriasProductos] = useState([]);
   const [productosPos, setProductosPos] = useState([]);
   const [carritoPos, setCarritoPos] = useState([]);
   const [ventasPosDia, setVentasPosDia] = useState([]);
   const [cortesCaja, setCortesCaja] = useState([]);
+  const [proveedores, setProveedores] = useState([]);
+  const [compras, setCompras] = useState([]);
   const [busquedaPos, setBusquedaPos] = useState("");
   const [metodoPagoPos, setMetodoPagoPos] = useState("efectivo");
   const [descuentoPos, setDescuentoPos] = useState(0);
@@ -71,12 +108,18 @@ function App() {
   const [empresasSeleccionadas, setEmpresasSeleccionadas] = useState([]);
   const [vistaActual, setVistaActual] = useState("dashboard");
   const [tabVentas, setTabVentas] = useState("cotizaciones");
+  const [tabCompras, setTabCompras] = useState("ordenes");
+  const [tabInventario, setTabInventario] = useState("stock");
   const [tabAjustes, setTabAjustes] = useState("empresas");
   const [empresaForm, setEmpresaForm] = useState(emptyEmpresa);
   const [usuarioForm, setUsuarioForm] = useState(emptyUsuario);
   const [clienteForm, setClienteForm] = useState(emptyCliente);
   const [cotizacionForm, setCotizacionForm] = useState(emptyDocumentoVenta);
   const [ordenForm, setOrdenForm] = useState(emptyDocumentoVenta);
+  const [productoForm, setProductoForm] = useState(emptyProducto);
+  const [categoriaForm, setCategoriaForm] = useState(emptyCategoria);
+  const [proveedorForm, setProveedorForm] = useState(emptyProveedor);
+  const [compraForm, setCompraForm] = useState(emptyCompra);
   const [error, setError] = useState("");
   const [mensaje, setMensaje] = useState("");
 
@@ -106,6 +149,24 @@ function App() {
       }
 
       const params = { empresa_id: queryEmpresa };
+      const requests = await Promise.allSettled([
+        axios.get(`${API_URL}/dashboard`, { headers: authHeaders, params }),
+        axios.get(`${API_URL}/alertas`, { headers: authHeaders, params }),
+        axios.get(`${API_URL}/ventas`, { headers: authHeaders, params }),
+        axios.get(`${API_URL}/inventario`, { headers: authHeaders, params }),
+        axios.get(`${API_URL}/clientes`, { headers: authHeaders, params }),
+        axios.get(`${API_URL}/cotizaciones`, { headers: authHeaders, params }),
+        axios.get(`${API_URL}/ordenes-venta`, { headers: authHeaders, params }),
+        axios.get(`${API_URL}/pos/ventas-dia`, { headers: authHeaders, params }),
+        axios.get(`${API_URL}/pos/cortes`, { headers: authHeaders, params }),
+        axios.get(`${API_URL}/productos`, { headers: authHeaders, params }),
+        axios.get(`${API_URL}/categorias-productos`, {
+          headers: authHeaders,
+          params,
+        }),
+        axios.get(`${API_URL}/proveedores`, { headers: authHeaders, params }),
+        axios.get(`${API_URL}/compras`, { headers: authHeaders, params }),
+      ]);
       const [
         dashboardRes,
         alertasRes,
@@ -116,28 +177,42 @@ function App() {
         ordenesRes,
         ventasPosRes,
         cortesRes,
-      ] =
-        await Promise.all([
-          axios.get(`${API_URL}/dashboard`, { headers: authHeaders, params }),
-          axios.get(`${API_URL}/alertas`, { headers: authHeaders, params }),
-          axios.get(`${API_URL}/ventas`, { headers: authHeaders, params }),
-          axios.get(`${API_URL}/inventario`, { headers: authHeaders, params }),
-          axios.get(`${API_URL}/clientes`, { headers: authHeaders, params }),
-          axios.get(`${API_URL}/cotizaciones`, { headers: authHeaders, params }),
-          axios.get(`${API_URL}/ordenes-venta`, { headers: authHeaders, params }),
-          axios.get(`${API_URL}/pos/ventas-dia`, { headers: authHeaders, params }),
-          axios.get(`${API_URL}/pos/cortes`, { headers: authHeaders, params }),
-        ]);
+        productosRes,
+        categoriasRes,
+        proveedoresRes,
+        comprasRes,
+      ] = requests;
+      const failed = requests.some((request) => request.status === "rejected");
 
-      setDashboard(dashboardRes.data);
-      setAlertas(alertasRes.data.alertas);
-      setVentas(ventasRes.data.ventas);
-      setInventario(inventarioRes.data.inventario);
-      setClientes(clientesRes.data.clientes);
-      setCotizaciones(cotizacionesRes.data.cotizaciones);
-      setOrdenesVenta(ordenesRes.data.ordenes);
-      setVentasPosDia(ventasPosRes.data.ventas);
-      setCortesCaja(cortesRes.data.cortes);
+      if (dashboardRes.status === "fulfilled") setDashboard(dashboardRes.value.data);
+      if (alertasRes.status === "fulfilled") setAlertas(alertasRes.value.data.alertas);
+      if (ventasRes.status === "fulfilled") setVentas(ventasRes.value.data.ventas);
+      if (inventarioRes.status === "fulfilled") {
+        setInventario(inventarioRes.value.data.inventario);
+      }
+      if (clientesRes.status === "fulfilled") setClientes(clientesRes.value.data.clientes);
+      if (cotizacionesRes.status === "fulfilled") {
+        setCotizaciones(cotizacionesRes.value.data.cotizaciones);
+      }
+      if (ordenesRes.status === "fulfilled") setOrdenesVenta(ordenesRes.value.data.ordenes);
+      if (ventasPosRes.status === "fulfilled") setVentasPosDia(ventasPosRes.value.data.ventas);
+      if (cortesRes.status === "fulfilled") setCortesCaja(cortesRes.value.data.cortes);
+      if (productosRes.status === "fulfilled") setProductos(productosRes.value.data.productos);
+      if (categoriasRes.status === "fulfilled") {
+        setCategoriasProductos(categoriasRes.value.data.categorias);
+      }
+      if (proveedoresRes.status === "fulfilled") {
+        setProveedores(proveedoresRes.value.data.proveedores);
+      }
+      if (comprasRes.status === "fulfilled") {
+        setCompras(comprasRes.value.data.compras);
+      }
+
+      if (failed) {
+        setError("Algunos modulos no cargaron. Revisa que los SQL esten ejecutados.");
+      } else {
+        setError("");
+      }
     },
     [authHeaders, empresaQuery, token]
   );
@@ -179,9 +254,12 @@ function App() {
       setUsuario(meRes.data.user);
       await cargarAjustes();
       await cargarDatos();
-      setError("");
-    } catch {
-      setError("No se pudo cargar la sesion. Inicia sesion nuevamente.");
+    } catch (requestError) {
+      if (requestError.response?.status === 401) {
+        setError("Tu sesion expiro. Inicia sesion nuevamente.");
+      } else {
+        setError("No se pudieron cargar algunos datos del sistema.");
+      }
     }
   }, [authHeaders, cargarAjustes, cargarDatos, token]);
 
@@ -226,10 +304,14 @@ function App() {
     setCotizaciones([]);
     setOrdenesVenta([]);
     setInventario([]);
+    setProductos([]);
+    setCategoriasProductos([]);
     setProductosPos([]);
     setCarritoPos([]);
     setVentasPosDia([]);
     setCortesCaja([]);
+    setProveedores([]);
+    setCompras([]);
     setEmpresas([]);
     setUsuarios([]);
     setVistaActual("dashboard");
@@ -556,6 +638,118 @@ function App() {
     }
   }
 
+  async function crearProducto(event) {
+    event.preventDefault();
+    setError("");
+    setMensaje("");
+
+    try {
+      await axios.post(
+        `${API_URL}/productos`,
+        { ...productoForm, empresa_id: empresaActivaId },
+        { headers: authHeaders }
+      );
+      setProductoForm(emptyProducto);
+      await cargarDatos();
+      setMensaje("Producto creado correctamente.");
+    } catch {
+      setError("No se pudo crear el producto.");
+    }
+  }
+
+  async function crearCategoriaProducto(event) {
+    event.preventDefault();
+    setError("");
+    setMensaje("");
+
+    try {
+      await axios.post(
+        `${API_URL}/categorias-productos`,
+        { ...categoriaForm, empresa_id: empresaActivaId },
+        { headers: authHeaders }
+      );
+      setCategoriaForm(emptyCategoria);
+      await cargarDatos();
+      setMensaje("Categoria creada correctamente.");
+    } catch {
+      setError("No se pudo crear la categoria.");
+    }
+  }
+
+  async function crearProveedor(event) {
+    event.preventDefault();
+    setError("");
+    setMensaje("");
+
+    try {
+      await axios.post(
+        `${API_URL}/proveedores`,
+        { ...proveedorForm, empresa_id: empresaActivaId },
+        { headers: authHeaders }
+      );
+      setProveedorForm(emptyProveedor);
+      await cargarDatos();
+      setMensaje("Proveedor creado correctamente.");
+    } catch {
+      setError("No se pudo crear el proveedor.");
+    }
+  }
+
+  async function crearCompra(event) {
+    event.preventDefault();
+    setError("");
+    setMensaje("");
+
+    const productoSeleccionado = productos.find(
+      (producto) => producto.cod_producto === compraForm.cod_producto
+    );
+
+    try {
+      await axios.post(
+        `${API_URL}/compras`,
+        {
+          empresa_id: empresaActivaId,
+          proveedor_id: compraForm.proveedor_id || null,
+          estado: compraForm.estado,
+          lineas: [
+            {
+              cod_producto: compraForm.cod_producto,
+              descripcion:
+                compraForm.descripcion ||
+                productoSeleccionado?.nombre ||
+                "Producto comprado",
+              cantidad: Number(compraForm.cantidad || 0),
+              costo_unitario: Number(compraForm.costo_unitario || 0),
+            },
+          ],
+        },
+        { headers: authHeaders }
+      );
+      setCompraForm(emptyCompra);
+      await cargarDatos();
+      setMensaje("Orden de compra creada correctamente.");
+    } catch {
+      setError("No se pudo crear la orden de compra.");
+    }
+  }
+
+  async function recibirCompra(compraId) {
+    setError("");
+    setMensaje("");
+
+    try {
+      await axios.post(
+        `${API_URL}/compras/${compraId}/recibir`,
+        {},
+        { headers: authHeaders }
+      );
+      await cargarDatos();
+      setMensaje("Compra recibida e inventario actualizado.");
+    } catch {
+      setError("No se pudo recibir la compra.");
+    }
+  }
+
   async function descargarReporte(tipo) {
     try {
       const endpoint =
@@ -634,7 +828,15 @@ function App() {
         </div>
 
         <nav>
-          {["dashboard", "ventas", "pos", "inventario", "reportes", "auditoria"].map(
+          {[
+            "dashboard",
+            "ventas",
+            "pos",
+            "compras",
+            "inventario",
+            "reportes",
+            "auditoria",
+          ].map(
             (vista) => (
               <button
                 key={vista}
@@ -645,6 +847,8 @@ function App() {
                   ? "Dashboard"
                   : vista === "pos"
                     ? "Punto de venta"
+                    : vista === "compras"
+                      ? "Compras"
                   : vista.charAt(0).toUpperCase() + vista.slice(1)}
               </button>
             )
@@ -1117,12 +1321,232 @@ function App() {
           </section>
         )}
 
+        {vistaActual === "compras" && (
+          <section className="panel">
+            <div className="panel-header">
+              <div>
+                <h2>Compras</h2>
+                <p>Proveedores, ordenes de compra y recepcion de inventario.</p>
+              </div>
+            </div>
+
+            <div className="tabs">
+              {["ordenes", "proveedores"].map((tab) => (
+                <button
+                  key={tab}
+                  className={tabCompras === tab ? "active" : ""}
+                  onClick={() => setTabCompras(tab)}
+                >
+                  {tab === "ordenes" ? "Ordenes de compra" : "Proveedores"}
+                </button>
+              ))}
+            </div>
+
+            {tabCompras === "ordenes" && (
+              <div className="settings-grid">
+                <form className="admin-form" onSubmit={crearCompra}>
+                  <h2>Nueva orden de compra</h2>
+                  <select
+                    value={compraForm.proveedor_id}
+                    onChange={(event) =>
+                      setCompraForm({
+                        ...compraForm,
+                        proveedor_id: event.target.value,
+                      })
+                    }
+                  >
+                    <option value="">Proveedor no registrado</option>
+                    {proveedores.map((proveedor) => (
+                      <option key={proveedor.id} value={proveedor.id}>
+                        {proveedor.nombre}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    value={compraForm.cod_producto}
+                    onChange={(event) => {
+                      const producto = productos.find(
+                        (item) => item.cod_producto === event.target.value
+                      );
+                      setCompraForm({
+                        ...compraForm,
+                        cod_producto: event.target.value,
+                        descripcion: producto?.nombre || compraForm.descripcion,
+                      });
+                    }}
+                  >
+                    <option value="">Selecciona producto</option>
+                    {productos.map((producto) => (
+                      <option key={producto.cod_producto} value={producto.cod_producto}>
+                        {producto.cod_producto} - {producto.nombre}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    value={compraForm.descripcion}
+                    onChange={(event) =>
+                      setCompraForm({
+                        ...compraForm,
+                        descripcion: event.target.value,
+                      })
+                    }
+                    placeholder="Descripcion"
+                  />
+                  <div className="form-row">
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={compraForm.cantidad}
+                      onChange={(event) =>
+                        setCompraForm({
+                          ...compraForm,
+                          cantidad: event.target.value,
+                        })
+                      }
+                      placeholder="Cantidad"
+                    />
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={compraForm.costo_unitario}
+                      onChange={(event) =>
+                        setCompraForm({
+                          ...compraForm,
+                          costo_unitario: event.target.value,
+                        })
+                      }
+                      placeholder="Costo unitario"
+                    />
+                  </div>
+                  <select
+                    value={compraForm.estado}
+                    onChange={(event) =>
+                      setCompraForm({ ...compraForm, estado: event.target.value })
+                    }
+                  >
+                    <option value="borrador">Borrador</option>
+                    <option value="orden_enviada">Orden enviada</option>
+                  </select>
+                  <button
+                    type="submit"
+                    disabled={!empresaActivaId || !compraForm.cod_producto}
+                  >
+                    Crear orden
+                  </button>
+                </form>
+
+                <div>
+                  <h2>Ordenes de compra</h2>
+                  <DataTable
+                    columns={["Numero", "Proveedor", "Fecha", "Estado", "Total", "Accion"]}
+                    rows={compras}
+                    renderRow={(compra) => [
+                      compra.numero,
+                      compra.proveedor,
+                      new Date(compra.fecha).toLocaleDateString(),
+                      <span key={compra.id} className={`badge ${compra.estado}`}>
+                        {compra.estado}
+                      </span>,
+                      `Q ${Number(compra.total).toFixed(2)}`,
+                      compra.estado === "recibida" ? (
+                        "Recibida"
+                      ) : compra.estado === "cancelada" ? (
+                        "Cancelada"
+                      ) : (
+                        <button
+                          key={`${compra.id}-recibir`}
+                          className="table-action"
+                          onClick={() => void recibirCompra(compra.id)}
+                        >
+                          Recibir
+                        </button>
+                      ),
+                    ]}
+                  />
+                </div>
+              </div>
+            )}
+
+            {tabCompras === "proveedores" && (
+              <div className="settings-grid">
+                <form className="admin-form" onSubmit={crearProveedor}>
+                  <h2>Nuevo proveedor</h2>
+                  <input
+                    value={proveedorForm.nombre}
+                    onChange={(event) =>
+                      setProveedorForm({
+                        ...proveedorForm,
+                        nombre: event.target.value,
+                      })
+                    }
+                    placeholder="Nombre"
+                  />
+                  <input
+                    value={proveedorForm.nit}
+                    onChange={(event) =>
+                      setProveedorForm({ ...proveedorForm, nit: event.target.value })
+                    }
+                    placeholder="NIT"
+                  />
+                  <input
+                    value={proveedorForm.telefono}
+                    onChange={(event) =>
+                      setProveedorForm({
+                        ...proveedorForm,
+                        telefono: event.target.value,
+                      })
+                    }
+                    placeholder="Telefono"
+                  />
+                  <input
+                    value={proveedorForm.email}
+                    onChange={(event) =>
+                      setProveedorForm({ ...proveedorForm, email: event.target.value })
+                    }
+                    placeholder="Email"
+                  />
+                  <input
+                    value={proveedorForm.direccion}
+                    onChange={(event) =>
+                      setProveedorForm({
+                        ...proveedorForm,
+                        direccion: event.target.value,
+                      })
+                    }
+                    placeholder="Direccion"
+                  />
+                  <button type="submit" disabled={!empresaActivaId}>
+                    Crear proveedor
+                  </button>
+                </form>
+
+                <div>
+                  <h2>Proveedores</h2>
+                  <DataTable
+                    columns={["Nombre", "NIT", "Telefono", "Email", "Estado"]}
+                    rows={proveedores}
+                    renderRow={(proveedor) => [
+                      proveedor.nombre,
+                      proveedor.nit || "-",
+                      proveedor.telefono || "-",
+                      proveedor.email || "-",
+                      proveedor.estado,
+                    ]}
+                  />
+                </div>
+              </div>
+            )}
+          </section>
+        )}
+
         {vistaActual === "inventario" && (
           <section className="panel">
             <div className="panel-header">
               <div>
                 <h2>Modulo de inventario</h2>
-                <p>Stock filtrado por las empresas seleccionadas.</p>
+                <p>Productos, categorias y stock por empresa.</p>
               </div>
 
               <button
@@ -1133,29 +1557,209 @@ function App() {
               </button>
             </div>
 
-            <DataTable
-              columns={[
-                "Codigo",
-                "Producto",
-                "Categoria",
-                "Stock fisico",
-                "Stock reportado",
-                "Stock minimo",
-                "Estado",
-              ]}
-              rows={inventario}
-              renderRow={(item) => [
-                item.cod_producto,
-                item.nombre,
-                item.categoria,
-                item.stock_fisico,
-                item.stock_reportado,
-                item.stock_minimo,
-                <span key={item.id} className={`badge ${item.estado.toLowerCase()}`}>
-                  {item.estado}
-                </span>,
-              ]}
-            />
+            <div className="tabs">
+              {["stock", "productos", "categorias"].map((tab) => (
+                <button
+                  key={tab}
+                  className={tabInventario === tab ? "active" : ""}
+                  onClick={() => setTabInventario(tab)}
+                >
+                  {tab === "stock" ? "Stock actual" : tab.charAt(0).toUpperCase() + tab.slice(1)}
+                </button>
+              ))}
+            </div>
+
+            {tabInventario === "stock" && (
+              <DataTable
+                columns={[
+                  "Codigo",
+                  "Producto",
+                  "Categoria",
+                  "Stock fisico",
+                  "Stock reportado",
+                  "Stock minimo",
+                  "Estado",
+                ]}
+                rows={inventario}
+                renderRow={(item) => [
+                  item.cod_producto,
+                  item.nombre,
+                  item.categoria,
+                  item.stock_fisico,
+                  item.stock_reportado,
+                  item.stock_minimo,
+                  <span key={item.id} className={`badge ${item.estado.toLowerCase()}`}>
+                    {item.estado}
+                  </span>,
+                ]}
+              />
+            )}
+
+            {tabInventario === "productos" && (
+              <div className="settings-grid">
+                <form className="admin-form" onSubmit={crearProducto}>
+                  <h2>Nuevo producto</h2>
+                  <input
+                    value={productoForm.cod_producto}
+                    onChange={(event) =>
+                      setProductoForm({
+                        ...productoForm,
+                        cod_producto: event.target.value,
+                      })
+                    }
+                    placeholder="Codigo"
+                  />
+                  <input
+                    value={productoForm.nombre}
+                    onChange={(event) =>
+                      setProductoForm({ ...productoForm, nombre: event.target.value })
+                    }
+                    placeholder="Nombre"
+                  />
+                  <select
+                    value={productoForm.tipo}
+                    onChange={(event) =>
+                      setProductoForm({ ...productoForm, tipo: event.target.value })
+                    }
+                  >
+                    <option value="producto">Producto</option>
+                    <option value="servicio">Servicio</option>
+                    <option value="insumo">Insumo</option>
+                  </select>
+                  <select
+                    value={productoForm.categoria}
+                    onChange={(event) =>
+                      setProductoForm({
+                        ...productoForm,
+                        categoria: event.target.value,
+                      })
+                    }
+                  >
+                    <option value="">Sin categoria</option>
+                    {categoriasProductos.map((categoria) => (
+                      <option key={categoria.id} value={categoria.nombre}>
+                        {categoria.nombre}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    value={productoForm.descripcion}
+                    onChange={(event) =>
+                      setProductoForm({
+                        ...productoForm,
+                        descripcion: event.target.value,
+                      })
+                    }
+                    placeholder="Descripcion"
+                  />
+                  <div className="form-row">
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={productoForm.precio_venta}
+                      onChange={(event) =>
+                        setProductoForm({
+                          ...productoForm,
+                          precio_venta: event.target.value,
+                        })
+                      }
+                      placeholder="Precio venta"
+                    />
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={productoForm.stock_minimo}
+                      onChange={(event) =>
+                        setProductoForm({
+                          ...productoForm,
+                          stock_minimo: event.target.value,
+                        })
+                      }
+                      placeholder="Stock minimo"
+                    />
+                  </div>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={productoForm.stock_inicial}
+                    onChange={(event) =>
+                      setProductoForm({
+                        ...productoForm,
+                        stock_inicial: event.target.value,
+                      })
+                    }
+                    placeholder="Stock inicial"
+                  />
+                  <button type="submit" disabled={!empresaActivaId}>
+                    Crear producto
+                  </button>
+                </form>
+
+                <div>
+                  <h2>Productos</h2>
+                  <DataTable
+                    columns={["Codigo", "Nombre", "Tipo", "Categoria", "Precio", "Stock"]}
+                    rows={productos}
+                    renderRow={(producto) => [
+                      producto.cod_producto,
+                      producto.nombre,
+                      producto.tipo,
+                      producto.categoria || "-",
+                      `Q ${Number(producto.precio_venta).toFixed(2)}`,
+                      producto.stock_fisico,
+                    ]}
+                  />
+                </div>
+              </div>
+            )}
+
+            {tabInventario === "categorias" && (
+              <div className="settings-grid">
+                <form className="admin-form" onSubmit={crearCategoriaProducto}>
+                  <h2>Nueva categoria</h2>
+                  <input
+                    value={categoriaForm.nombre}
+                    onChange={(event) =>
+                      setCategoriaForm({
+                        ...categoriaForm,
+                        nombre: event.target.value,
+                      })
+                    }
+                    placeholder="Nombre"
+                  />
+                  <input
+                    value={categoriaForm.descripcion}
+                    onChange={(event) =>
+                      setCategoriaForm({
+                        ...categoriaForm,
+                        descripcion: event.target.value,
+                      })
+                    }
+                    placeholder="Descripcion"
+                  />
+                  <button type="submit" disabled={!empresaActivaId}>
+                    Crear categoria
+                  </button>
+                </form>
+
+                <div>
+                  <h2>Categorias de productos</h2>
+                  <DataTable
+                    columns={["Nombre", "Descripcion", "Empresa", "Estado"]}
+                    rows={categoriasProductos}
+                    renderRow={(categoria) => [
+                      categoria.nombre,
+                      categoria.descripcion || "-",
+                      categoria.empresa,
+                      categoria.estado,
+                    ]}
+                  />
+                </div>
+              </div>
+            )}
           </section>
         )}
 

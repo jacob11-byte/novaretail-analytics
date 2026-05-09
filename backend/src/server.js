@@ -205,6 +205,34 @@ function calcularVentaPos(items = [], descuento = 0) {
   };
 }
 
+function calcularCompraLineas(lineas = []) {
+  const detalle = lineas.map((linea) => {
+    const cantidad = Number(linea.cantidad || 0);
+    const costoUnitario = Number(linea.costo_unitario || 0);
+    const subtotal = Number((cantidad * costoUnitario).toFixed(2));
+
+    return {
+      producto_id: linea.producto_id || linea.cod_producto || null,
+      cod_producto: linea.cod_producto || linea.producto_id || null,
+      descripcion: linea.descripcion || "",
+      cantidad,
+      costo_unitario: costoUnitario,
+      subtotal,
+    };
+  });
+  const subtotal = Number(
+    detalle.reduce((total, linea) => total + linea.subtotal, 0).toFixed(2)
+  );
+  const impuestos = Number((subtotal * 0.12).toFixed(2));
+
+  return {
+    detalle,
+    subtotal,
+    impuestos,
+    total: Number((subtotal + impuestos).toFixed(2)),
+  };
+}
+
 async function generarNumeroDocumento(tabla, prefijo, empresaId) {
   const result = await db.query(
     `select count(*)::int as total from ${tabla} where empresa_id = $1`,
@@ -1706,6 +1734,699 @@ api.get("/pos/cortes", authMiddleware(MANAGEMENT_ROLES), async (req, res) => {
     res.status(500).json({ error: "Error al obtener cortes de caja" });
   }
 });
+
+api.get("/productos", authMiddleware(MANAGEMENT_ROLES), async (req, res) => {
+  try {
+    const empresaIds = await resolverEmpresasPermitidas(req, res);
+
+    if (!empresaIds) {
+      return;
+    }
+
+    const filtroEmpresa = empresaWhere("p", empresaIds, 1);
+    const result = await db.query(
+      `
+      select
+        p.cod_producto,
+        p.empresa_id,
+        e.nombre as empresa,
+        p.nombre,
+        p.categoria,
+        p.tipo,
+        p.descripcion,
+        p.stock_minimo,
+        p.precio_venta,
+        p.estado,
+        coalesce(i.stock_fisico, 0) as stock_fisico,
+        coalesce(i.stock_reportado, 0) as stock_reportado
+      from productos p
+      join empresas e on e.id = p.empresa_id
+      left join inventario i on i.cod_producto = p.cod_producto
+        and (i.empresa_id = p.empresa_id or i.empresa_id is null or p.empresa_id is null)
+      where true
+      ${filtroEmpresa.clause}
+      order by p.nombre asc
+      `,
+      [...filtroEmpresa.params]
+    );
+
+    res.json({ total: result.rows.length, productos: result.rows });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Error al obtener productos" });
+  }
+});
+
+api.post("/productos", authMiddleware(MANAGEMENT_ROLES), async (req, res) => {
+  const client = await db.connect();
+
+  try {
+    const {
+      empresa_id,
+      cod_producto,
+      nombre,
+      categoria,
+      tipo = "producto",
+      descripcion,
+      stock_minimo = 10,
+      precio_venta = 0,
+      stock_inicial = 0,
+      estado = "activo",
+    } = req.body;
+
+    if (!(await validarEmpresaPermitida(req, res, empresa_id))) {
+      return;
+    }
+
+    if (!cod_producto || !nombre) {
+      return res.status(400).json({ error: "Codigo y nombre son requeridos" });
+    }
+
+    await client.query("begin");
+    const producto = await client.query(
+      `
+      insert into productos (
+        empresa_id, cod_producto, nombre, categoria, tipo, descripcion,
+        stock_minimo, precio_venta, estado
+      )
+      values ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      returning *
+      `,
+      [
+        empresa_id,
+        cod_producto,
+        nombre,
+        categoria || null,
+        tipo,
+        descripcion || null,
+        stock_minimo,
+        precio_venta,
+        estado,
+      ]
+    );
+
+    await client.query(
+      `
+      insert into inventario (empresa_id, cod_producto, stock_fisico, stock_reportado)
+      values ($1, $2, $3, $3)
+      on conflict do nothing
+      `,
+      [empresa_id, cod_producto, stock_inicial]
+    );
+
+    if (categoria) {
+      await client.query(
+        `
+        insert into categorias_productos (empresa_id, nombre)
+        values ($1, $2)
+        on conflict (empresa_id, nombre) do nothing
+        `,
+        [empresa_id, categoria]
+      );
+    }
+
+    await client.query("commit");
+    await registrarAuditoria(
+      req.user.id,
+      "PRODUCTO_CREADO",
+      `Producto creado: ${cod_producto}`,
+      empresa_id
+    );
+
+    res.status(201).json({ producto: producto.rows[0] });
+  } catch (error) {
+    await client.query("rollback");
+    console.error(error);
+
+    if (error.code === "23505") {
+      return res.status(409).json({ error: "El codigo de producto ya existe" });
+    }
+
+    res.status(500).json({ error: "Error al crear producto" });
+  } finally {
+    client.release();
+  }
+});
+
+api.put("/productos/:codigo", authMiddleware(MANAGEMENT_ROLES), async (req, res) => {
+  try {
+    const { empresa_id } = req.body;
+
+    if (!(await validarEmpresaPermitida(req, res, empresa_id))) {
+      return;
+    }
+
+    const {
+      nombre,
+      categoria,
+      tipo,
+      descripcion,
+      stock_minimo,
+      precio_venta,
+      estado,
+    } = req.body;
+
+    const result = await db.query(
+      `
+      update productos
+      set nombre = coalesce($1, nombre),
+          categoria = $2,
+          tipo = coalesce($3, tipo),
+          descripcion = $4,
+          stock_minimo = coalesce($5, stock_minimo),
+          precio_venta = coalesce($6, precio_venta),
+          estado = coalesce($7, estado),
+          updated_at = now()
+      where empresa_id = $8 and cod_producto = $9
+      returning *
+      `,
+      [
+        nombre,
+        categoria || null,
+        tipo,
+        descripcion || null,
+        stock_minimo,
+        precio_venta,
+        estado,
+        empresa_id,
+        req.params.codigo,
+      ]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Producto no encontrado" });
+    }
+
+    res.json({ producto: result.rows[0] });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Error al actualizar producto" });
+  }
+});
+
+api.get(
+  "/categorias-productos",
+  authMiddleware(MANAGEMENT_ROLES),
+  async (req, res) => {
+    try {
+      const empresaIds = await resolverEmpresasPermitidas(req, res);
+
+      if (!empresaIds) {
+        return;
+      }
+
+      const filtroEmpresa = empresaWhere("c", empresaIds, 1);
+      const result = await db.query(
+        `
+        select c.id, c.empresa_id, e.nombre as empresa, c.nombre,
+          c.descripcion, c.estado, c.created_at, c.updated_at
+        from categorias_productos c
+        join empresas e on e.id = c.empresa_id
+        where true
+        ${filtroEmpresa.clause}
+        order by c.nombre asc
+        `,
+        [...filtroEmpresa.params]
+      );
+
+      res.json({ total: result.rows.length, categorias: result.rows });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: "Error al obtener categorias" });
+    }
+  }
+);
+
+api.post(
+  "/categorias-productos",
+  authMiddleware(MANAGEMENT_ROLES),
+  async (req, res) => {
+    try {
+      const { empresa_id, nombre, descripcion, estado = "activa" } = req.body;
+
+      if (!(await validarEmpresaPermitida(req, res, empresa_id))) {
+        return;
+      }
+
+      if (!nombre) {
+        return res.status(400).json({ error: "El nombre es requerido" });
+      }
+
+      const result = await db.query(
+        `
+        insert into categorias_productos (empresa_id, nombre, descripcion, estado)
+        values ($1, $2, $3, $4)
+        returning *
+        `,
+        [empresa_id, nombre, descripcion || null, estado]
+      );
+
+      res.status(201).json({ categoria: result.rows[0] });
+    } catch (error) {
+      console.error(error);
+
+      if (error.code === "23505") {
+        return res.status(409).json({ error: "La categoria ya existe" });
+      }
+
+      res.status(500).json({ error: "Error al crear categoria" });
+    }
+  }
+);
+
+api.put(
+  "/categorias-productos/:id",
+  authMiddleware(MANAGEMENT_ROLES),
+  async (req, res) => {
+    try {
+      const actual = await db.query(
+        "select empresa_id from categorias_productos where id=$1",
+        [req.params.id]
+      );
+
+      if (actual.rows.length === 0) {
+        return res.status(404).json({ error: "Categoria no encontrada" });
+      }
+
+      if (!(await validarEmpresaPermitida(req, res, actual.rows[0].empresa_id))) {
+        return;
+      }
+
+      const { nombre, descripcion, estado } = req.body;
+      const result = await db.query(
+        `
+        update categorias_productos
+        set nombre = coalesce($1, nombre),
+            descripcion = $2,
+            estado = coalesce($3, estado),
+            updated_at = now()
+        where id = $4
+        returning *
+        `,
+        [nombre, descripcion || null, estado, req.params.id]
+      );
+
+      res.json({ categoria: result.rows[0] });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: "Error al actualizar categoria" });
+    }
+  }
+);
+
+api.get("/proveedores", authMiddleware(MANAGEMENT_ROLES), async (req, res) => {
+  try {
+    const empresaIds = await resolverEmpresasPermitidas(req, res);
+
+    if (!empresaIds) {
+      return;
+    }
+
+    const filtroEmpresa = empresaWhere("p", empresaIds, 1);
+    const result = await db.query(
+      `
+      select p.id, p.empresa_id, e.nombre as empresa, p.nombre, p.nit,
+        p.telefono, p.email, p.direccion, p.estado, p.created_at, p.updated_at
+      from proveedores p
+      join empresas e on e.id = p.empresa_id
+      where true
+      ${filtroEmpresa.clause}
+      order by p.created_at desc
+      `,
+      [...filtroEmpresa.params]
+    );
+
+    res.json({ total: result.rows.length, proveedores: result.rows });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Error al obtener proveedores" });
+  }
+});
+
+api.post("/proveedores", authMiddleware(MANAGEMENT_ROLES), async (req, res) => {
+  try {
+    const {
+      empresa_id,
+      nombre,
+      nit,
+      telefono,
+      email,
+      direccion,
+      estado = "activo",
+    } = req.body;
+
+    if (!(await validarEmpresaPermitida(req, res, empresa_id))) {
+      return;
+    }
+
+    if (!nombre) {
+      return res.status(400).json({ error: "El nombre del proveedor es requerido" });
+    }
+
+    const result = await db.query(
+      `
+      insert into proveedores (empresa_id, nombre, nit, telefono, email, direccion, estado)
+      values ($1, $2, $3, $4, $5, $6, $7)
+      returning *
+      `,
+      [empresa_id, nombre, nit, telefono, email, direccion, estado]
+    );
+
+    await registrarAuditoria(
+      req.user.id,
+      "PROVEEDOR_CREADO",
+      `Proveedor creado: ${nombre}`,
+      empresa_id
+    );
+
+    res.status(201).json({ proveedor: result.rows[0] });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Error al crear proveedor" });
+  }
+});
+
+api.get("/compras", authMiddleware(MANAGEMENT_ROLES), async (req, res) => {
+  try {
+    const empresaIds = await resolverEmpresasPermitidas(req, res);
+
+    if (!empresaIds) {
+      return;
+    }
+
+    const filtroEmpresa = empresaWhere("c", empresaIds, 1);
+    const result = await db.query(
+      `
+      select c.id, c.empresa_id, e.nombre as empresa, c.proveedor_id,
+        coalesce(p.nombre, 'Proveedor no registrado') as proveedor,
+        c.numero, c.fecha, c.estado, c.subtotal, c.impuestos,
+        c.total, c.created_at, c.updated_at
+      from compras c
+      join empresas e on e.id = c.empresa_id
+      left join proveedores p on p.id = c.proveedor_id
+      where true
+      ${filtroEmpresa.clause}
+      order by c.created_at desc
+      `,
+      [...filtroEmpresa.params]
+    );
+
+    res.json({ total: result.rows.length, compras: result.rows });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Error al obtener compras" });
+  }
+});
+
+api.post("/compras", authMiddleware(MANAGEMENT_ROLES), async (req, res) => {
+  const client = await db.connect();
+
+  try {
+    const {
+      empresa_id,
+      proveedor_id,
+      numero,
+      fecha,
+      estado = "borrador",
+      lineas = [],
+    } = req.body;
+
+    if (!(await validarEmpresaPermitida(req, res, empresa_id))) {
+      return;
+    }
+
+    if (!Array.isArray(lineas) || lineas.length === 0) {
+      return res.status(400).json({ error: "La compra requiere productos" });
+    }
+
+    const calculo = calcularCompraLineas(lineas);
+    const numeroDocumento =
+      numero || (await generarNumeroDocumento("compras", "OC", empresa_id));
+
+    await client.query("begin");
+    const compra = await client.query(
+      `
+      insert into compras (
+        empresa_id, proveedor_id, usuario_id, numero, fecha,
+        estado, subtotal, impuestos, total
+      )
+      values ($1, $2, $3, $4, coalesce($5, current_date), $6, $7, $8, $9)
+      returning *
+      `,
+      [
+        empresa_id,
+        proveedor_id || null,
+        String(req.user.id),
+        numeroDocumento,
+        fecha || null,
+        estado,
+        calculo.subtotal,
+        calculo.impuestos,
+        calculo.total,
+      ]
+    );
+
+    for (const linea of calculo.detalle) {
+      await client.query(
+        `
+        insert into compra_detalle (
+          compra_id, producto_id, cod_producto, descripcion,
+          cantidad, costo_unitario, subtotal
+        )
+        values ($1, $2, $3, $4, $5, $6, $7)
+        `,
+        [
+          compra.rows[0].id,
+          linea.producto_id,
+          linea.cod_producto,
+          linea.descripcion,
+          linea.cantidad,
+          linea.costo_unitario,
+          linea.subtotal,
+        ]
+      );
+    }
+
+    await client.query("commit");
+    await registrarAuditoria(
+      req.user.id,
+      "COMPRA_CREADA",
+      `Compra creada: ${numeroDocumento}`,
+      empresa_id
+    );
+
+    res.status(201).json({ compra: compra.rows[0] });
+  } catch (error) {
+    await client.query("rollback");
+    console.error(error);
+    res.status(500).json({ error: "Error al crear compra" });
+  } finally {
+    client.release();
+  }
+});
+
+api.get("/compras/:id", authMiddleware(MANAGEMENT_ROLES), async (req, res) => {
+  try {
+    const compra = await db.query(
+      `
+      select c.*, coalesce(p.nombre, 'Proveedor no registrado') as proveedor
+      from compras c
+      left join proveedores p on p.id = c.proveedor_id
+      where c.id = $1
+      `,
+      [req.params.id]
+    );
+
+    if (compra.rows.length === 0) {
+      return res.status(404).json({ error: "Compra no encontrada" });
+    }
+
+    if (!(await validarEmpresaPermitida(req, res, compra.rows[0].empresa_id))) {
+      return;
+    }
+
+    const detalle = await db.query(
+      "select * from compra_detalle where compra_id=$1 order by id asc",
+      [req.params.id]
+    );
+
+    res.json({ compra: { ...compra.rows[0], lineas: detalle.rows } });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Error al obtener compra" });
+  }
+});
+
+api.put("/compras/:id", authMiddleware(MANAGEMENT_ROLES), async (req, res) => {
+  const client = await db.connect();
+
+  try {
+    const actual = await db.query("select * from compras where id=$1", [
+      req.params.id,
+    ]);
+
+    if (actual.rows.length === 0) {
+      return res.status(404).json({ error: "Compra no encontrada" });
+    }
+
+    if (!(await validarEmpresaPermitida(req, res, actual.rows[0].empresa_id))) {
+      return;
+    }
+
+    if (actual.rows[0].estado === "recibida") {
+      return res.status(409).json({ error: "No se puede editar una compra recibida" });
+    }
+
+    const { proveedor_id, fecha, estado, lineas } = req.body;
+    const calculo = Array.isArray(lineas) ? calcularCompraLineas(lineas) : null;
+
+    await client.query("begin");
+    const compra = await client.query(
+      `
+      update compras
+      set proveedor_id = coalesce($1, proveedor_id),
+          fecha = coalesce($2, fecha),
+          estado = coalesce($3, estado),
+          subtotal = coalesce($4, subtotal),
+          impuestos = coalesce($5, impuestos),
+          total = coalesce($6, total),
+          updated_at = now()
+      where id = $7
+      returning *
+      `,
+      [
+        proveedor_id || null,
+        fecha || null,
+        estado || null,
+        calculo?.subtotal ?? null,
+        calculo?.impuestos ?? null,
+        calculo?.total ?? null,
+        req.params.id,
+      ]
+    );
+
+    if (calculo) {
+      await client.query("delete from compra_detalle where compra_id=$1", [
+        req.params.id,
+      ]);
+
+      for (const linea of calculo.detalle) {
+        await client.query(
+          `
+          insert into compra_detalle (
+            compra_id, producto_id, cod_producto, descripcion,
+            cantidad, costo_unitario, subtotal
+          )
+          values ($1, $2, $3, $4, $5, $6, $7)
+          `,
+          [
+            req.params.id,
+            linea.producto_id,
+            linea.cod_producto,
+            linea.descripcion,
+            linea.cantidad,
+            linea.costo_unitario,
+            linea.subtotal,
+          ]
+        );
+      }
+    }
+
+    await client.query("commit");
+    res.json({ compra: compra.rows[0] });
+  } catch (error) {
+    await client.query("rollback");
+    console.error(error);
+    res.status(500).json({ error: "Error al actualizar compra" });
+  } finally {
+    client.release();
+  }
+});
+
+api.post(
+  "/compras/:id/recibir",
+  authMiddleware(MANAGEMENT_ROLES),
+  async (req, res) => {
+    const client = await db.connect();
+
+    try {
+      const compra = await db.query("select * from compras where id=$1", [
+        req.params.id,
+      ]);
+
+      if (compra.rows.length === 0) {
+        return res.status(404).json({ error: "Compra no encontrada" });
+      }
+
+      const compraActual = compra.rows[0];
+
+      if (!(await validarEmpresaPermitida(req, res, compraActual.empresa_id))) {
+        return;
+      }
+
+      if (compraActual.estado === "recibida") {
+        return res.status(409).json({ error: "La compra ya fue recibida" });
+      }
+
+      if (compraActual.estado === "cancelada") {
+        return res.status(409).json({ error: "No se puede recibir una compra cancelada" });
+      }
+
+      const detalle = await db.query(
+        "select * from compra_detalle where compra_id=$1",
+        [req.params.id]
+      );
+
+      await client.query("begin");
+
+      for (const linea of detalle.rows) {
+        const actualizado = await client.query(
+          `
+          update inventario
+          set stock_fisico = stock_fisico + $1,
+              stock_reportado = stock_reportado + $1
+          where empresa_id = $2 and cod_producto = $3
+          returning id
+          `,
+          [linea.cantidad, compraActual.empresa_id, linea.cod_producto]
+        );
+
+        if (actualizado.rows.length === 0) {
+          await client.query(
+            `
+            insert into inventario (
+              empresa_id, cod_producto, stock_fisico, stock_reportado
+            )
+            values ($1, $2, $3, $3)
+            `,
+            [compraActual.empresa_id, linea.cod_producto, linea.cantidad]
+          );
+        }
+      }
+
+      const result = await client.query(
+        "update compras set estado='recibida', updated_at=now() where id=$1 returning *",
+        [req.params.id]
+      );
+
+      await client.query("commit");
+      await registrarAuditoria(
+        req.user.id,
+        "COMPRA_RECIBIDA",
+        `Compra recibida: ${compraActual.numero}`,
+        compraActual.empresa_id
+      );
+
+      res.json({ compra: result.rows[0] });
+    } catch (error) {
+      await client.query("rollback");
+      console.error(error);
+      res.status(500).json({ error: "Error al recibir compra" });
+    } finally {
+      client.release();
+    }
+  }
+);
 
 api.get("/dashboard", authMiddleware(MANAGEMENT_ROLES), async (req, res) => {
   try {
