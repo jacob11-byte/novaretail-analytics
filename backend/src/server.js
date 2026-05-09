@@ -291,6 +291,23 @@ async function registrarAuditoria(usuarioId, accion, detalle, empresaId = null) 
   }
 }
 
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function diasEntreFechas(fechaInicio, fechaFin) {
+  const inicio = new Date(`${fechaInicio}T00:00:00`);
+  const fin = new Date(`${fechaFin}T00:00:00`);
+  const diff = fin.getTime() - inicio.getTime();
+
+  return Math.max(Math.floor(diff / 86400000) + 1, 0);
+}
+
 app.get("/", (req, res) => {
   res.json({
     message: "NovaRetail Analytics API funcionando",
@@ -2668,6 +2685,827 @@ api.post(
       res.status(500).json({ error: "Error al recibir compra" });
     } finally {
       client.release();
+    }
+  }
+);
+
+api.get("/facturas", authMiddleware(MANAGEMENT_ROLES), async (req, res) => {
+  try {
+    const empresaIds = await resolverEmpresasPermitidas(req, res);
+
+    if (!empresaIds) {
+      return;
+    }
+
+    const filtroEmpresa = empresaWhere("f", empresaIds, 1);
+    const result = await db.query(
+      `
+      select f.id, f.empresa_id, e.nombre as empresa, f.cliente_id,
+        coalesce(c.nombre, 'Cliente no registrado') as cliente,
+        f.numero, f.fecha, f.estado, f.subtotal, f.impuestos,
+        f.total, f.notas, f.created_at, f.updated_at
+      from facturas f
+      join empresas e on e.id = f.empresa_id
+      left join clientes c on c.id = f.cliente_id
+      where true
+      ${filtroEmpresa.clause}
+      order by f.created_at desc
+      `,
+      [...filtroEmpresa.params]
+    );
+
+    res.json({ total: result.rows.length, facturas: result.rows });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Error al obtener facturas" });
+  }
+});
+
+api.post("/facturas", authMiddleware(MANAGEMENT_ROLES), async (req, res) => {
+  const client = await db.connect();
+
+  try {
+    const { empresa_id, cliente_id, fecha, notas, lineas = [] } = req.body;
+
+    if (!(await validarEmpresaPermitida(req, res, empresa_id))) {
+      return;
+    }
+
+    if (!Array.isArray(lineas) || lineas.length === 0) {
+      return res.status(400).json({ error: "La factura requiere productos" });
+    }
+
+    const calculo = calcularLineas(lineas);
+    const numero = await generarNumeroDocumento("facturas", "FAC", empresa_id);
+
+    await client.query("begin");
+    const factura = await client.query(
+      `
+      insert into facturas (
+        empresa_id, cliente_id, usuario_id, numero, fecha,
+        estado, subtotal, impuestos, total, notas
+      )
+      values ($1, $2, $3, $4, coalesce($5, current_date), 'borrador', $6, $7, $8, $9)
+      returning *
+      `,
+      [
+        empresa_id,
+        cliente_id || null,
+        String(req.user.id),
+        numero,
+        fecha || null,
+        calculo.subtotal,
+        calculo.impuestos,
+        calculo.total,
+        notas || null,
+      ]
+    );
+
+    for (const linea of calculo.detalle) {
+      await client.query(
+        `
+        insert into factura_detalle (
+          factura_id, producto_id, cod_producto, descripcion, cantidad,
+          precio_unitario, impuesto_porcentaje, subtotal
+        )
+        values ($1, $2, $2, $3, $4, $5, $6, $7)
+        `,
+        [
+          factura.rows[0].id,
+          linea.producto_id,
+          linea.descripcion,
+          linea.cantidad,
+          linea.precio_unitario,
+          linea.impuesto_porcentaje,
+          linea.subtotal,
+        ]
+      );
+    }
+
+    await client.query("commit");
+    await registrarAuditoria(
+      req.user.id,
+      "FACTURA_CREADA",
+      `Factura creada: ${numero}`,
+      empresa_id
+    );
+
+    res.status(201).json({ factura: factura.rows[0] });
+  } catch (error) {
+    await client.query("rollback");
+    console.error(error);
+    res.status(500).json({ error: "Error al crear factura" });
+  } finally {
+    client.release();
+  }
+});
+
+api.get("/facturas/:id", authMiddleware(MANAGEMENT_ROLES), async (req, res) => {
+  try {
+    const factura = await db.query(
+      `
+      select f.*, e.nombre as empresa, e.nit as empresa_nit,
+        e.direccion as empresa_direccion, e.telefono as empresa_telefono,
+        e.email as empresa_email, coalesce(c.nombre, 'Cliente no registrado') as cliente,
+        c.nit as cliente_nit, c.direccion as cliente_direccion,
+        c.email as cliente_email, c.telefono as cliente_telefono
+      from facturas f
+      join empresas e on e.id = f.empresa_id
+      left join clientes c on c.id = f.cliente_id
+      where f.id = $1
+      `,
+      [req.params.id]
+    );
+
+    if (factura.rows.length === 0) {
+      return res.status(404).json({ error: "Factura no encontrada" });
+    }
+
+    if (!(await validarEmpresaPermitida(req, res, factura.rows[0].empresa_id))) {
+      return;
+    }
+
+    const detalle = await db.query(
+      "select * from factura_detalle where factura_id=$1 order by id asc",
+      [req.params.id]
+    );
+
+    res.json({ factura: { ...factura.rows[0], lineas: detalle.rows } });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Error al obtener factura" });
+  }
+});
+
+api.put("/facturas/:id", authMiddleware(MANAGEMENT_ROLES), async (req, res) => {
+  const client = await db.connect();
+
+  try {
+    const actual = await db.query("select * from facturas where id=$1", [
+      req.params.id,
+    ]);
+
+    if (actual.rows.length === 0) {
+      return res.status(404).json({ error: "Factura no encontrada" });
+    }
+
+    if (!(await validarEmpresaPermitida(req, res, actual.rows[0].empresa_id))) {
+      return;
+    }
+
+    if (actual.rows[0].estado !== "borrador") {
+      return res.status(409).json({ error: "Solo se puede editar en borrador" });
+    }
+
+    const { empresa_id, cliente_id, fecha, notas, lineas } = req.body;
+    const empresaDestino = empresa_id || actual.rows[0].empresa_id;
+
+    if (!(await validarEmpresaPermitida(req, res, empresaDestino))) {
+      return;
+    }
+
+    const calculo = Array.isArray(lineas) ? calcularLineas(lineas) : null;
+
+    await client.query("begin");
+    const factura = await client.query(
+      `
+      update facturas
+      set empresa_id = coalesce($1, empresa_id),
+          cliente_id = $2,
+          fecha = coalesce($3, fecha),
+          notas = $4,
+          subtotal = coalesce($5, subtotal),
+          impuestos = coalesce($6, impuestos),
+          total = coalesce($7, total),
+          updated_at = now()
+      where id = $8
+      returning *
+      `,
+      [
+        empresa_id || null,
+        cliente_id || null,
+        fecha || null,
+        notas || null,
+        calculo?.subtotal ?? null,
+        calculo?.impuestos ?? null,
+        calculo?.total ?? null,
+        req.params.id,
+      ]
+    );
+
+    if (calculo) {
+      await client.query("delete from factura_detalle where factura_id=$1", [
+        req.params.id,
+      ]);
+
+      for (const linea of calculo.detalle) {
+        await client.query(
+          `
+          insert into factura_detalle (
+            factura_id, producto_id, cod_producto, descripcion, cantidad,
+            precio_unitario, impuesto_porcentaje, subtotal
+          )
+          values ($1, $2, $2, $3, $4, $5, $6, $7)
+          `,
+          [
+            req.params.id,
+            linea.producto_id,
+            linea.descripcion,
+            linea.cantidad,
+            linea.precio_unitario,
+            linea.impuesto_porcentaje,
+            linea.subtotal,
+          ]
+        );
+      }
+    }
+
+    await client.query("commit");
+    res.json({ factura: factura.rows[0] });
+  } catch (error) {
+    await client.query("rollback");
+    console.error(error);
+    res.status(500).json({ error: "Error al actualizar factura" });
+  } finally {
+    client.release();
+  }
+});
+
+api.post(
+  "/facturas/:id/confirmar",
+  authMiddleware(MANAGEMENT_ROLES),
+  async (req, res) => {
+    try {
+      const actual = await db.query("select * from facturas where id=$1", [
+        req.params.id,
+      ]);
+
+      if (actual.rows.length === 0) {
+        return res.status(404).json({ error: "Factura no encontrada" });
+      }
+
+      if (!(await validarEmpresaPermitida(req, res, actual.rows[0].empresa_id))) {
+        return;
+      }
+
+      if (actual.rows[0].estado !== "borrador") {
+        return res.status(409).json({ error: "La factura no esta en borrador" });
+      }
+
+      const result = await db.query(
+        "update facturas set estado='pendiente', updated_at=now() where id=$1 returning *",
+        [req.params.id]
+      );
+
+      res.json({ factura: result.rows[0] });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: "Error al confirmar factura" });
+    }
+  }
+);
+
+api.post(
+  "/facturas/:id/validar",
+  authMiddleware(MANAGEMENT_ROLES),
+  async (req, res) => {
+    try {
+      const actual = await db.query("select * from facturas where id=$1", [
+        req.params.id,
+      ]);
+
+      if (actual.rows.length === 0) {
+        return res.status(404).json({ error: "Factura no encontrada" });
+      }
+
+      if (!(await validarEmpresaPermitida(req, res, actual.rows[0].empresa_id))) {
+        return;
+      }
+
+      if (actual.rows[0].estado !== "pendiente") {
+        return res.status(409).json({ error: "La factura debe estar pendiente" });
+      }
+
+      const result = await db.query(
+        "update facturas set estado='publicado', updated_at=now() where id=$1 returning *",
+        [req.params.id]
+      );
+
+      await registrarAuditoria(
+        req.user.id,
+        "FACTURA_PUBLICADA",
+        `Factura publicada: ${result.rows[0].numero}`,
+        result.rows[0].empresa_id
+      );
+
+      res.json({ factura: result.rows[0] });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: "Error al validar factura" });
+    }
+  }
+);
+
+api.post(
+  "/facturas/:id/restablecer-borrador",
+  authMiddleware(MANAGEMENT_ROLES),
+  async (req, res) => {
+    try {
+      const actual = await db.query("select * from facturas where id=$1", [
+        req.params.id,
+      ]);
+
+      if (actual.rows.length === 0) {
+        return res.status(404).json({ error: "Factura no encontrada" });
+      }
+
+      if (!(await validarEmpresaPermitida(req, res, actual.rows[0].empresa_id))) {
+        return;
+      }
+
+      const result = await db.query(
+        "update facturas set estado='borrador', updated_at=now() where id=$1 returning *",
+        [req.params.id]
+      );
+
+      await registrarAuditoria(
+        req.user.id,
+        "FACTURA_RESTABLECIDA",
+        `Factura restablecida a borrador: ${result.rows[0].numero}`,
+        result.rows[0].empresa_id
+      );
+
+      res.json({ factura: result.rows[0] });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: "Error al restablecer factura" });
+    }
+  }
+);
+
+api.get(
+  "/facturas/:id/imprimir",
+  authMiddleware(MANAGEMENT_ROLES),
+  async (req, res) => {
+    try {
+      const factura = await db.query(
+        `
+        select f.*, e.nombre as empresa, e.nit as empresa_nit,
+          e.direccion as empresa_direccion, e.telefono as empresa_telefono,
+          e.email as empresa_email, coalesce(c.nombre, 'Consumidor final') as cliente,
+          c.nit as cliente_nit, c.direccion as cliente_direccion,
+          c.email as cliente_email, c.telefono as cliente_telefono
+        from facturas f
+        join empresas e on e.id = f.empresa_id
+        left join clientes c on c.id = f.cliente_id
+        where f.id = $1
+        `,
+        [req.params.id]
+      );
+
+      if (factura.rows.length === 0) {
+        return res.status(404).send("Factura no encontrada");
+      }
+
+      const data = factura.rows[0];
+
+      if (!(await validarEmpresaPermitida(req, res, data.empresa_id))) {
+        return;
+      }
+
+      const detalle = await db.query(
+        "select * from factura_detalle where factura_id=$1 order by id asc",
+        [req.params.id]
+      );
+      const rows = detalle.rows
+        .map(
+          (linea) => `
+            <tr>
+              <td>${escapeHtml(linea.descripcion || linea.cod_producto)}</td>
+              <td class="num">${Number(linea.cantidad).toFixed(2)}</td>
+              <td class="num">Q ${Number(linea.precio_unitario).toFixed(2)}</td>
+              <td class="num">Q ${Number(linea.subtotal).toFixed(2)}</td>
+            </tr>`
+        )
+        .join("");
+
+      const html = `
+      <!doctype html>
+      <html>
+      <head>
+        <meta charset="utf-8" />
+        <title>Factura ${escapeHtml(data.numero)}</title>
+        <style>
+          @page { size: letter; margin: 18mm; }
+          body { font-family: Arial, sans-serif; color: #172033; }
+          .invoice { max-width: 820px; margin: 0 auto; }
+          .header { display: flex; justify-content: space-between; border-bottom: 3px solid #2563eb; padding-bottom: 18px; }
+          .brand { font-size: 28px; font-weight: 800; color: #2563eb; }
+          .muted { color: #64748b; font-size: 13px; }
+          .box { border: 1px solid #e5e7eb; border-radius: 8px; padding: 14px; margin-top: 18px; }
+          .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+          table { width: 100%; border-collapse: collapse; margin-top: 18px; }
+          th { background: #eff6ff; text-align: left; }
+          th, td { padding: 10px; border-bottom: 1px solid #e5e7eb; }
+          .num { text-align: right; }
+          .totals { width: 320px; margin-left: auto; margin-top: 18px; }
+          .totals div { display: flex; justify-content: space-between; padding: 8px 0; }
+          .total { font-size: 20px; font-weight: 800; border-top: 2px solid #172033; }
+          .status { text-transform: uppercase; font-weight: 800; color: #166534; }
+          .actions { margin: 20px 0; text-align: right; }
+          .actions button { padding: 10px 14px; border: 0; border-radius: 8px; background: #2563eb; color: white; font-weight: 700; }
+          @media print { .actions { display: none; } }
+        </style>
+      </head>
+      <body>
+        <div class="invoice">
+          <div class="actions"><button onclick="window.print()">Imprimir / Guardar PDF</button></div>
+          <section class="header">
+            <div>
+              <div class="brand">${escapeHtml(data.empresa)}</div>
+              <div class="muted">NIT: ${escapeHtml(data.empresa_nit || "CF")}</div>
+              <div class="muted">${escapeHtml(data.empresa_direccion || "")}</div>
+              <div class="muted">${escapeHtml(data.empresa_telefono || "")} ${escapeHtml(data.empresa_email || "")}</div>
+            </div>
+            <div>
+              <h1>Factura</h1>
+              <div><strong>No.</strong> ${escapeHtml(data.numero)}</div>
+              <div><strong>Fecha:</strong> ${escapeHtml(data.fecha)}</div>
+              <div class="status">${escapeHtml(data.estado)}</div>
+            </div>
+          </section>
+          <section class="grid">
+            <div class="box">
+              <strong>Cliente</strong>
+              <div>${escapeHtml(data.cliente)}</div>
+              <div class="muted">NIT: ${escapeHtml(data.cliente_nit || "CF")}</div>
+              <div class="muted">${escapeHtml(data.cliente_direccion || "")}</div>
+            </div>
+            <div class="box">
+              <strong>Notas</strong>
+              <div class="muted">${escapeHtml(data.notas || "Gracias por su compra.")}</div>
+            </div>
+          </section>
+          <table>
+            <thead>
+              <tr><th>Descripcion</th><th class="num">Cantidad</th><th class="num">Precio</th><th class="num">Subtotal</th></tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+          <section class="totals">
+            <div><span>Subtotal</span><strong>Q ${Number(data.subtotal).toFixed(2)}</strong></div>
+            <div><span>IVA</span><strong>Q ${Number(data.impuestos).toFixed(2)}</strong></div>
+            <div class="total"><span>Total</span><strong>Q ${Number(data.total).toFixed(2)}</strong></div>
+          </section>
+        </div>
+      </body>
+      </html>`;
+
+      await registrarAuditoria(
+        req.user.id,
+        "FACTURA_IMPRESA",
+        `Factura impresa: ${data.numero}`,
+        data.empresa_id
+      );
+
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      res.send(html);
+    } catch (error) {
+      console.error(error);
+      res.status(500).send("Error al imprimir factura");
+    }
+  }
+);
+
+api.get("/empleados", authMiddleware(MANAGEMENT_ROLES), async (req, res) => {
+  try {
+    const empresaIds = await resolverEmpresasPermitidas(req, res);
+
+    if (!empresaIds) return;
+
+    const filtroEmpresa = empresaWhere("em", empresaIds, 1);
+    const result = await db.query(
+      `
+      select em.*, e.nombre as empresa
+      from empleados em
+      join empresas e on e.id = em.empresa_id
+      where true
+      ${filtroEmpresa.clause}
+      order by em.created_at desc
+      `,
+      [...filtroEmpresa.params]
+    );
+
+    res.json({ total: result.rows.length, empleados: result.rows });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Error al obtener empleados" });
+  }
+});
+
+api.post("/empleados", authMiddleware(MANAGEMENT_ROLES), async (req, res) => {
+  try {
+    const {
+      empresa_id,
+      usuario_id,
+      codigo,
+      nombre,
+      dpi,
+      telefono,
+      email,
+      direccion,
+      puesto,
+      departamento,
+      fecha_ingreso,
+      salario_base = 0,
+      estado = "activo",
+    } = req.body;
+
+    if (!(await validarEmpresaPermitida(req, res, empresa_id))) return;
+    if (!codigo || !nombre) {
+      return res.status(400).json({ error: "Codigo y nombre son requeridos" });
+    }
+
+    const result = await db.query(
+      `
+      insert into empleados (
+        empresa_id, usuario_id, codigo, nombre, dpi, telefono, email,
+        direccion, puesto, departamento, fecha_ingreso, salario_base, estado
+      )
+      values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+      returning *
+      `,
+      [
+        empresa_id,
+        usuario_id || null,
+        codigo,
+        nombre,
+        dpi || null,
+        telefono || null,
+        email || null,
+        direccion || null,
+        puesto || null,
+        departamento || null,
+        fecha_ingreso || null,
+        salario_base,
+        estado,
+      ]
+    );
+
+    res.status(201).json({ empleado: result.rows[0] });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Error al crear empleado" });
+  }
+});
+
+api.get("/empleados/:id", authMiddleware(MANAGEMENT_ROLES), async (req, res) => {
+  try {
+    const result = await db.query("select * from empleados where id=$1", [
+      req.params.id,
+    ]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Empleado no encontrado" });
+    }
+
+    if (!(await validarEmpresaPermitida(req, res, result.rows[0].empresa_id))) return;
+
+    res.json({ empleado: result.rows[0] });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Error al obtener empleado" });
+  }
+});
+
+api.put("/empleados/:id", authMiddleware(MANAGEMENT_ROLES), async (req, res) => {
+  try {
+    const actual = await db.query("select empresa_id from empleados where id=$1", [
+      req.params.id,
+    ]);
+
+    if (actual.rows.length === 0) {
+      return res.status(404).json({ error: "Empleado no encontrado" });
+    }
+
+    if (!(await validarEmpresaPermitida(req, res, actual.rows[0].empresa_id))) return;
+
+    const {
+      nombre,
+      dpi,
+      telefono,
+      email,
+      direccion,
+      puesto,
+      departamento,
+      fecha_ingreso,
+      salario_base,
+      estado,
+    } = req.body;
+    const result = await db.query(
+      `
+      update empleados
+      set nombre = coalesce($1, nombre), dpi = $2, telefono = $3,
+        email = $4, direccion = $5, puesto = $6, departamento = $7,
+        fecha_ingreso = $8, salario_base = coalesce($9, salario_base),
+        estado = coalesce($10, estado), updated_at = now()
+      where id = $11
+      returning *
+      `,
+      [
+        nombre,
+        dpi || null,
+        telefono || null,
+        email || null,
+        direccion || null,
+        puesto || null,
+        departamento || null,
+        fecha_ingreso || null,
+        salario_base,
+        estado,
+        req.params.id,
+      ]
+    );
+
+    res.json({ empleado: result.rows[0] });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Error al actualizar empleado" });
+  }
+});
+
+api.delete("/empleados/:id", authMiddleware(MANAGEMENT_ROLES), async (req, res) => {
+  try {
+    const actual = await db.query("select empresa_id from empleados where id=$1", [
+      req.params.id,
+    ]);
+
+    if (actual.rows.length === 0) {
+      return res.status(404).json({ error: "Empleado no encontrado" });
+    }
+
+    if (!(await validarEmpresaPermitida(req, res, actual.rows[0].empresa_id))) return;
+
+    const result = await db.query(
+      "update empleados set estado='inactivo', updated_at=now() where id=$1 returning *",
+      [req.params.id]
+    );
+
+    res.json({ empleado: result.rows[0] });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Error al desactivar empleado" });
+  }
+});
+
+api.get("/vacaciones", authMiddleware(MANAGEMENT_ROLES), async (req, res) => {
+  try {
+    const empresaIds = await resolverEmpresasPermitidas(req, res);
+
+    if (!empresaIds) return;
+
+    const filtroEmpresa = empresaWhere("v", empresaIds, 1);
+    const result = await db.query(
+      `
+      select v.*, em.nombre as empleado, e.nombre as empresa
+      from vacaciones v
+      join empleados em on em.id = v.empleado_id
+      join empresas e on e.id = v.empresa_id
+      where true
+      ${filtroEmpresa.clause}
+      order by v.created_at desc
+      `,
+      [...filtroEmpresa.params]
+    );
+
+    res.json({ total: result.rows.length, vacaciones: result.rows });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Error al obtener vacaciones" });
+  }
+});
+
+api.post("/vacaciones", authMiddleware(MANAGEMENT_ROLES), async (req, res) => {
+  try {
+    const { empresa_id, empleado_id, fecha_inicio, fecha_fin, motivo } = req.body;
+
+    if (!(await validarEmpresaPermitida(req, res, empresa_id))) return;
+    if (!empleado_id || !fecha_inicio || !fecha_fin) {
+      return res.status(400).json({ error: "Empleado y fechas son requeridos" });
+    }
+
+    const dias = diasEntreFechas(fecha_inicio, fecha_fin);
+    const result = await db.query(
+      `
+      insert into vacaciones (
+        empresa_id, empleado_id, fecha_inicio, fecha_fin,
+        dias_solicitados, motivo, estado
+      )
+      values ($1,$2,$3,$4,$5,$6,'pendiente')
+      returning *
+      `,
+      [empresa_id, empleado_id, fecha_inicio, fecha_fin, dias, motivo || null]
+    );
+
+    res.status(201).json({ vacaciones: result.rows[0] });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Error al solicitar vacaciones" });
+  }
+});
+
+api.put(
+  "/vacaciones/:id/aprobar",
+  authMiddleware(["admin", "gerente"]),
+  async (req, res) => {
+    try {
+      const actual = await db.query("select empresa_id from vacaciones where id=$1", [
+        req.params.id,
+      ]);
+
+      if (actual.rows.length === 0) {
+        return res.status(404).json({ error: "Solicitud no encontrada" });
+      }
+
+      if (!(await validarEmpresaPermitida(req, res, actual.rows[0].empresa_id))) return;
+
+      const result = await db.query(
+        `
+        update vacaciones
+        set estado='aprobada', aprobado_por=$1,
+          comentario_aprobacion=$2, updated_at=now()
+        where id=$3
+        returning *
+        `,
+        [String(req.user.id), req.body.comentario || null, req.params.id]
+      );
+
+      res.json({ vacaciones: result.rows[0] });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: "Error al aprobar vacaciones" });
+    }
+  }
+);
+
+api.put(
+  "/vacaciones/:id/rechazar",
+  authMiddleware(["admin", "gerente"]),
+  async (req, res) => {
+    try {
+      const actual = await db.query("select empresa_id from vacaciones where id=$1", [
+        req.params.id,
+      ]);
+
+      if (actual.rows.length === 0) {
+        return res.status(404).json({ error: "Solicitud no encontrada" });
+      }
+
+      if (!(await validarEmpresaPermitida(req, res, actual.rows[0].empresa_id))) return;
+
+      const result = await db.query(
+        `
+        update vacaciones
+        set estado='rechazada', aprobado_por=$1,
+          comentario_aprobacion=$2, updated_at=now()
+        where id=$3
+        returning *
+        `,
+        [String(req.user.id), req.body.comentario || null, req.params.id]
+      );
+
+      res.json({ vacaciones: result.rows[0] });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: "Error al rechazar vacaciones" });
+    }
+  }
+);
+
+api.get(
+  "/empleados/:id/vacaciones",
+  authMiddleware(MANAGEMENT_ROLES),
+  async (req, res) => {
+    try {
+      const empleado = await db.query("select empresa_id from empleados where id=$1", [
+        req.params.id,
+      ]);
+
+      if (empleado.rows.length === 0) {
+        return res.status(404).json({ error: "Empleado no encontrado" });
+      }
+
+      if (!(await validarEmpresaPermitida(req, res, empleado.rows[0].empresa_id))) return;
+
+      const result = await db.query(
+        "select * from vacaciones where empleado_id=$1 order by created_at desc",
+        [req.params.id]
+      );
+
+      res.json({ total: result.rows.length, vacaciones: result.rows });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: "Error al obtener vacaciones del empleado" });
     }
   }
 );

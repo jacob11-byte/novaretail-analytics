@@ -470,6 +470,12 @@ td {
   grid-template-columns: 1fr auto auto;
 }
 
+.inline-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .kardex-toolbar {
   display: grid;
   grid-template-columns: minmax(260px, 420px) auto;

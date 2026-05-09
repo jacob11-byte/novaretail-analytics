@@ -82,6 +82,39 @@ const emptyAjusteInventario = {
   referencia: "",
 };
 
+const emptyFactura = {
+  id: "",
+  empresa_id: "",
+  cliente_id: "",
+  fecha: "",
+  notas: "",
+  cod_producto: "",
+  descripcion: "",
+  cantidad: 1,
+  precio_unitario: 0,
+  impuesto_porcentaje: 12,
+};
+
+const emptyEmpleado = {
+  codigo: "",
+  nombre: "",
+  dpi: "",
+  telefono: "",
+  email: "",
+  direccion: "",
+  puesto: "",
+  departamento: "",
+  fecha_ingreso: "",
+  salario_base: 0,
+};
+
+const emptyVacaciones = {
+  empleado_id: "",
+  fecha_inicio: "",
+  fecha_fin: "",
+  motivo: "",
+};
+
 function App() {
   const [email, setEmail] = useState("admin@novaretail.com");
   const [password, setPassword] = useState("");
@@ -108,6 +141,9 @@ function App() {
   const [proveedores, setProveedores] = useState([]);
   const [compras, setCompras] = useState([]);
   const [kardex, setKardex] = useState([]);
+  const [facturas, setFacturas] = useState([]);
+  const [empleados, setEmpleados] = useState([]);
+  const [vacaciones, setVacaciones] = useState([]);
   const [busquedaPos, setBusquedaPos] = useState("");
   const [metodoPagoPos, setMetodoPagoPos] = useState("efectivo");
   const [descuentoPos, setDescuentoPos] = useState(0);
@@ -132,6 +168,9 @@ function App() {
   const [ajusteInventarioForm, setAjusteInventarioForm] = useState(
     emptyAjusteInventario
   );
+  const [facturaForm, setFacturaForm] = useState(emptyFactura);
+  const [empleadoForm, setEmpleadoForm] = useState(emptyEmpleado);
+  const [vacacionesForm, setVacacionesForm] = useState(emptyVacaciones);
   const [error, setError] = useState("");
   const [mensaje, setMensaje] = useState("");
 
@@ -178,6 +217,9 @@ function App() {
         }),
         axios.get(`${API_URL}/proveedores`, { headers: authHeaders, params }),
         axios.get(`${API_URL}/compras`, { headers: authHeaders, params }),
+        axios.get(`${API_URL}/facturas`, { headers: authHeaders, params }),
+        axios.get(`${API_URL}/empleados`, { headers: authHeaders, params }),
+        axios.get(`${API_URL}/vacaciones`, { headers: authHeaders, params }),
       ]);
       const [
         dashboardRes,
@@ -193,6 +235,9 @@ function App() {
         categoriasRes,
         proveedoresRes,
         comprasRes,
+        facturasRes,
+        empleadosRes,
+        vacacionesRes,
       ] = requests;
       const failed = requests.some((request) => request.status === "rejected");
 
@@ -218,6 +263,15 @@ function App() {
       }
       if (comprasRes.status === "fulfilled") {
         setCompras(comprasRes.value.data.compras);
+      }
+      if (facturasRes.status === "fulfilled") {
+        setFacturas(facturasRes.value.data.facturas);
+      }
+      if (empleadosRes.status === "fulfilled") {
+        setEmpleados(empleadosRes.value.data.empleados);
+      }
+      if (vacacionesRes.status === "fulfilled") {
+        setVacaciones(vacacionesRes.value.data.vacaciones);
       }
 
       if (failed) {
@@ -325,6 +379,9 @@ function App() {
     setProveedores([]);
     setCompras([]);
     setKardex([]);
+    setFacturas([]);
+    setEmpleados([]);
+    setVacaciones([]);
     setEmpresas([]);
     setUsuarios([]);
     setVistaActual("dashboard");
@@ -815,6 +872,169 @@ function App() {
     }
   }
 
+  function facturaPayload(form) {
+    const producto = productos.find((item) => item.cod_producto === form.cod_producto);
+
+    return {
+      empresa_id: form.empresa_id || empresaActivaId,
+      cliente_id: form.cliente_id || null,
+      fecha: form.fecha || null,
+      notas: form.notas || null,
+      lineas: [
+        {
+          producto_id: form.cod_producto,
+          descripcion: form.descripcion || producto?.nombre || "Producto facturado",
+          cantidad: Number(form.cantidad || 0),
+          precio_unitario: Number(form.precio_unitario || 0),
+          impuesto_porcentaje: Number(form.impuesto_porcentaje || 0),
+        },
+      ],
+    };
+  }
+
+  async function guardarFactura(event) {
+    event.preventDefault();
+    setError("");
+    setMensaje("");
+
+    try {
+      if (facturaForm.id) {
+        await axios.put(
+          `${API_URL}/facturas/${facturaForm.id}`,
+          facturaPayload(facturaForm),
+          { headers: authHeaders }
+        );
+        setMensaje("Factura actualizada en borrador.");
+      } else {
+        await axios.post(`${API_URL}/facturas`, facturaPayload(facturaForm), {
+          headers: authHeaders,
+        });
+        setMensaje("Factura creada en estado borrador.");
+      }
+
+      setFacturaForm(emptyFactura);
+      await cargarDatos();
+    } catch {
+      setError("No se pudo guardar la factura.");
+    }
+  }
+
+  async function abrirFactura(facturaId) {
+    setError("");
+
+    try {
+      const response = await axios.get(`${API_URL}/facturas/${facturaId}`, {
+        headers: authHeaders,
+      });
+      const factura = response.data.factura;
+      const primeraLinea = factura.lineas?.[0] || {};
+
+      setFacturaForm({
+        id: factura.id,
+        empresa_id: factura.empresa_id,
+        cliente_id: factura.cliente_id || "",
+        fecha: factura.fecha || "",
+        notas: factura.notas || "",
+        cod_producto: primeraLinea.cod_producto || primeraLinea.producto_id || "",
+        descripcion: primeraLinea.descripcion || "",
+        cantidad: primeraLinea.cantidad || 1,
+        precio_unitario: primeraLinea.precio_unitario || 0,
+        impuesto_porcentaje: primeraLinea.impuesto_porcentaje || 12,
+      });
+      setMensaje("Factura abierta para revisar.");
+    } catch {
+      setError("No se pudo abrir la factura.");
+    }
+  }
+
+  async function cambiarEstadoFactura(facturaId, accion) {
+    setError("");
+    setMensaje("");
+
+    try {
+      await axios.post(
+        `${API_URL}/facturas/${facturaId}/${accion}`,
+        {},
+        { headers: authHeaders }
+      );
+      await cargarDatos();
+      setMensaje("Estado de factura actualizado.");
+    } catch {
+      setError("No se pudo cambiar el estado de la factura.");
+    }
+  }
+
+  async function imprimirFactura(facturaId) {
+    setError("");
+
+    try {
+      const response = await axios.get(`${API_URL}/facturas/${facturaId}/imprimir`, {
+        headers: authHeaders,
+        responseType: "text",
+      });
+      const blob = new Blob([response.data], { type: "text/html" });
+      const url = window.URL.createObjectURL(blob);
+      window.open(url, "_blank", "noopener,noreferrer");
+    } catch {
+      setError("No se pudo imprimir la factura.");
+    }
+  }
+
+  async function crearEmpleado(event) {
+    event.preventDefault();
+    setError("");
+    setMensaje("");
+
+    try {
+      await axios.post(
+        `${API_URL}/empleados`,
+        { ...empleadoForm, empresa_id: empresaActivaId },
+        { headers: authHeaders }
+      );
+      setEmpleadoForm(emptyEmpleado);
+      await cargarDatos();
+      setMensaje("Empleado creado correctamente.");
+    } catch {
+      setError("No se pudo crear el empleado.");
+    }
+  }
+
+  async function solicitarVacaciones(event) {
+    event.preventDefault();
+    setError("");
+    setMensaje("");
+
+    try {
+      await axios.post(
+        `${API_URL}/vacaciones`,
+        { ...vacacionesForm, empresa_id: empresaActivaId },
+        { headers: authHeaders }
+      );
+      setVacacionesForm(emptyVacaciones);
+      await cargarDatos();
+      setMensaje("Solicitud de vacaciones creada.");
+    } catch {
+      setError("No se pudo crear la solicitud.");
+    }
+  }
+
+  async function resolverVacaciones(vacacionesId, accion) {
+    setError("");
+    setMensaje("");
+
+    try {
+      await axios.put(
+        `${API_URL}/vacaciones/${vacacionesId}/${accion}`,
+        {},
+        { headers: authHeaders }
+      );
+      await cargarDatos();
+      setMensaje("Solicitud actualizada.");
+    } catch {
+      setError("No se pudo actualizar la solicitud.");
+    }
+  }
+
   async function descargarReporte(tipo) {
     try {
       const endpoint =
@@ -898,7 +1118,10 @@ function App() {
             "ventas",
             "pos",
             "compras",
+            "facturas",
             "inventario",
+            "empleados",
+            "vacaciones",
             "reportes",
             "auditoria",
           ].map(
@@ -914,6 +1137,8 @@ function App() {
                     ? "Punto de venta"
                     : vista === "compras"
                       ? "Compras"
+                      : vista === "facturas"
+                        ? "Facturas"
                   : vista.charAt(0).toUpperCase() + vista.slice(1)}
               </button>
             )
@@ -1606,6 +1831,181 @@ function App() {
           </section>
         )}
 
+        {vistaActual === "facturas" && (
+          <section className="panel">
+            <div className="panel-header">
+              <div>
+                <h2>Facturas</h2>
+                <p>Borrador, pendiente, publicado e impresion de factura.</p>
+              </div>
+            </div>
+
+            <div className="settings-grid">
+              <form className="admin-form" onSubmit={guardarFactura}>
+                <h2>{facturaForm.id ? "Editar factura" : "Nueva factura"}</h2>
+                <select
+                  value={facturaForm.empresa_id || empresaActivaId}
+                  onChange={(event) =>
+                    setFacturaForm({ ...facturaForm, empresa_id: event.target.value })
+                  }
+                >
+                  {empresas.map((empresa) => (
+                    <option key={empresa.id} value={empresa.id}>
+                      {empresa.nombre}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={facturaForm.cliente_id}
+                  onChange={(event) =>
+                    setFacturaForm({ ...facturaForm, cliente_id: event.target.value })
+                  }
+                >
+                  <option value="">Consumidor final</option>
+                  {clientes.map((cliente) => (
+                    <option key={cliente.id} value={cliente.id}>
+                      {cliente.nombre}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={facturaForm.cod_producto}
+                  onChange={(event) => {
+                    const producto = productos.find(
+                      (item) => item.cod_producto === event.target.value
+                    );
+                    setFacturaForm({
+                      ...facturaForm,
+                      cod_producto: event.target.value,
+                      descripcion: producto?.nombre || facturaForm.descripcion,
+                      precio_unitario:
+                        Number(producto?.precio_venta || 0) ||
+                        facturaForm.precio_unitario,
+                    });
+                  }}
+                >
+                  <option value="">Selecciona producto</option>
+                  {productos.map((producto) => (
+                    <option key={producto.cod_producto} value={producto.cod_producto}>
+                      {producto.cod_producto} - {producto.nombre}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  value={facturaForm.descripcion}
+                  onChange={(event) =>
+                    setFacturaForm({ ...facturaForm, descripcion: event.target.value })
+                  }
+                  placeholder="Descripcion"
+                />
+                <div className="form-row">
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={facturaForm.cantidad}
+                    onChange={(event) =>
+                      setFacturaForm({ ...facturaForm, cantidad: event.target.value })
+                    }
+                    placeholder="Cantidad"
+                  />
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={facturaForm.precio_unitario}
+                    onChange={(event) =>
+                      setFacturaForm({
+                        ...facturaForm,
+                        precio_unitario: event.target.value,
+                      })
+                    }
+                    placeholder="Precio"
+                  />
+                </div>
+                <input
+                  value={facturaForm.notas}
+                  onChange={(event) =>
+                    setFacturaForm({ ...facturaForm, notas: event.target.value })
+                  }
+                  placeholder="Notas"
+                />
+                <button type="submit" disabled={!empresaActivaId || !facturaForm.cod_producto}>
+                  {facturaForm.id ? "Guardar cambios" : "Crear borrador"}
+                </button>
+                {facturaForm.id && (
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    onClick={() => setFacturaForm(emptyFactura)}
+                  >
+                    Nueva factura
+                  </button>
+                )}
+              </form>
+
+              <div>
+                <h2>Facturas creadas</h2>
+                <DataTable
+                  columns={["Numero", "Cliente", "Estado", "Total", "Acciones"]}
+                  rows={facturas}
+                  renderRow={(factura) => [
+                    factura.numero,
+                    factura.cliente,
+                    <span key={factura.id} className={`badge ${factura.estado}`}>
+                      {factura.estado}
+                    </span>,
+                    `Q ${Number(factura.total).toFixed(2)}`,
+                    <div key={`${factura.id}-acciones`} className="inline-actions">
+                      <button
+                        className="table-action"
+                        onClick={() => void abrirFactura(factura.id)}
+                      >
+                        Abrir
+                      </button>
+                      {factura.estado === "borrador" && (
+                        <button
+                          className="table-action"
+                          onClick={() => void cambiarEstadoFactura(factura.id, "confirmar")}
+                        >
+                          Confirmar
+                        </button>
+                      )}
+                      {factura.estado === "pendiente" && (
+                        <button
+                          className="table-action"
+                          onClick={() => void cambiarEstadoFactura(factura.id, "validar")}
+                        >
+                          Validar
+                        </button>
+                      )}
+                      {factura.estado !== "borrador" && (
+                        <button
+                          className="table-action"
+                          onClick={() =>
+                            void cambiarEstadoFactura(
+                              factura.id,
+                              "restablecer-borrador"
+                            )
+                          }
+                        >
+                          Restablecer borrador
+                        </button>
+                      )}
+                      <button
+                        className="table-action"
+                        onClick={() => void imprimirFactura(factura.id)}
+                      >
+                        Imprimir factura
+                      </button>
+                    </div>,
+                  ]}
+                />
+              </div>
+            </div>
+          </section>
+        )}
+
         {vistaActual === "inventario" && (
           <section className="panel">
             <div className="panel-header">
@@ -1963,6 +2363,205 @@ function App() {
                 </div>
               </div>
             )}
+          </section>
+        )}
+
+        {vistaActual === "empleados" && (
+          <section className="panel">
+            <div className="panel-header">
+              <div>
+                <h2>Empleados</h2>
+                <p>Registro de empleados por empresa, puesto y departamento.</p>
+              </div>
+            </div>
+
+            <div className="settings-grid">
+              <form className="admin-form" onSubmit={crearEmpleado}>
+                <h2>Nuevo empleado</h2>
+                <input
+                  value={empleadoForm.codigo}
+                  onChange={(event) =>
+                    setEmpleadoForm({ ...empleadoForm, codigo: event.target.value })
+                  }
+                  placeholder="Codigo"
+                />
+                <input
+                  value={empleadoForm.nombre}
+                  onChange={(event) =>
+                    setEmpleadoForm({ ...empleadoForm, nombre: event.target.value })
+                  }
+                  placeholder="Nombre"
+                />
+                <input
+                  value={empleadoForm.dpi}
+                  onChange={(event) =>
+                    setEmpleadoForm({ ...empleadoForm, dpi: event.target.value })
+                  }
+                  placeholder="DPI"
+                />
+                <div className="form-row">
+                  <input
+                    value={empleadoForm.puesto}
+                    onChange={(event) =>
+                      setEmpleadoForm({ ...empleadoForm, puesto: event.target.value })
+                    }
+                    placeholder="Puesto"
+                  />
+                  <input
+                    value={empleadoForm.departamento}
+                    onChange={(event) =>
+                      setEmpleadoForm({
+                        ...empleadoForm,
+                        departamento: event.target.value,
+                      })
+                    }
+                    placeholder="Departamento"
+                  />
+                </div>
+                <input
+                  type="date"
+                  value={empleadoForm.fecha_ingreso}
+                  onChange={(event) =>
+                    setEmpleadoForm({
+                      ...empleadoForm,
+                      fecha_ingreso: event.target.value,
+                    })
+                  }
+                />
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={empleadoForm.salario_base}
+                  onChange={(event) =>
+                    setEmpleadoForm({
+                      ...empleadoForm,
+                      salario_base: event.target.value,
+                    })
+                  }
+                  placeholder="Salario base"
+                />
+                <button type="submit" disabled={!empresaActivaId}>
+                  Crear empleado
+                </button>
+              </form>
+
+              <div>
+                <h2>Empleados activos</h2>
+                <DataTable
+                  columns={["Codigo", "Nombre", "Puesto", "Departamento", "Estado"]}
+                  rows={empleados}
+                  renderRow={(empleado) => [
+                    empleado.codigo,
+                    empleado.nombre,
+                    empleado.puesto || "-",
+                    empleado.departamento || "-",
+                    empleado.estado,
+                  ]}
+                />
+              </div>
+            </div>
+          </section>
+        )}
+
+        {vistaActual === "vacaciones" && (
+          <section className="panel">
+            <div className="panel-header">
+              <div>
+                <h2>Vacaciones</h2>
+                <p>Solicitudes, aprobacion y rechazo de vacaciones.</p>
+              </div>
+            </div>
+
+            <div className="settings-grid">
+              <form className="admin-form" onSubmit={solicitarVacaciones}>
+                <h2>Nueva solicitud</h2>
+                <select
+                  value={vacacionesForm.empleado_id}
+                  onChange={(event) =>
+                    setVacacionesForm({
+                      ...vacacionesForm,
+                      empleado_id: event.target.value,
+                    })
+                  }
+                >
+                  <option value="">Selecciona empleado</option>
+                  {empleados.map((empleado) => (
+                    <option key={empleado.id} value={empleado.id}>
+                      {empleado.nombre}
+                    </option>
+                  ))}
+                </select>
+                <div className="form-row">
+                  <input
+                    type="date"
+                    value={vacacionesForm.fecha_inicio}
+                    onChange={(event) =>
+                      setVacacionesForm({
+                        ...vacacionesForm,
+                        fecha_inicio: event.target.value,
+                      })
+                    }
+                  />
+                  <input
+                    type="date"
+                    value={vacacionesForm.fecha_fin}
+                    onChange={(event) =>
+                      setVacacionesForm({
+                        ...vacacionesForm,
+                        fecha_fin: event.target.value,
+                      })
+                    }
+                  />
+                </div>
+                <input
+                  value={vacacionesForm.motivo}
+                  onChange={(event) =>
+                    setVacacionesForm({ ...vacacionesForm, motivo: event.target.value })
+                  }
+                  placeholder="Motivo"
+                />
+                <button
+                  type="submit"
+                  disabled={!empresaActivaId || !vacacionesForm.empleado_id}
+                >
+                  Solicitar vacaciones
+                </button>
+              </form>
+
+              <div>
+                <h2>Solicitudes</h2>
+                <DataTable
+                  columns={["Empleado", "Inicio", "Fin", "Dias", "Estado", "Accion"]}
+                  rows={vacaciones}
+                  renderRow={(solicitud) => [
+                    solicitud.empleado,
+                    new Date(solicitud.fecha_inicio).toLocaleDateString(),
+                    new Date(solicitud.fecha_fin).toLocaleDateString(),
+                    solicitud.dias_solicitados,
+                    solicitud.estado,
+                    solicitud.estado === "pendiente" ? (
+                      <div key={`${solicitud.id}-acciones`} className="inline-actions">
+                        <button
+                          className="table-action"
+                          onClick={() => void resolverVacaciones(solicitud.id, "aprobar")}
+                        >
+                          Aprobar
+                        </button>
+                        <button
+                          className="table-action"
+                          onClick={() => void resolverVacaciones(solicitud.id, "rechazar")}
+                        >
+                          Rechazar
+                        </button>
+                      </div>
+                    ) : (
+                      "-"
+                    ),
+                  ]}
+                />
+              </div>
+            </div>
           </section>
         )}
 
