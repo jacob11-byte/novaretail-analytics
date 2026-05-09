@@ -67,6 +67,7 @@ const emptyProveedor = {
 };
 
 const emptyCompra = {
+  id: "",
   proveedor_id: "",
   cod_producto: "",
   descripcion: "",
@@ -144,6 +145,9 @@ function App() {
   const [facturas, setFacturas] = useState([]);
   const [empleados, setEmpleados] = useState([]);
   const [vacaciones, setVacaciones] = useState([]);
+  const [movimientosInventario, setMovimientosInventario] = useState([]);
+  const [eventosAuditoria, setEventosAuditoria] = useState([]);
+  const [reporteActual, setReporteActual] = useState(null);
   const [busquedaPos, setBusquedaPos] = useState("");
   const [metodoPagoPos, setMetodoPagoPos] = useState("efectivo");
   const [descuentoPos, setDescuentoPos] = useState(0);
@@ -220,6 +224,11 @@ function App() {
         axios.get(`${API_URL}/facturas`, { headers: authHeaders, params }),
         axios.get(`${API_URL}/empleados`, { headers: authHeaders, params }),
         axios.get(`${API_URL}/vacaciones`, { headers: authHeaders, params }),
+        axios.get(`${API_URL}/inventario/movimientos`, {
+          headers: authHeaders,
+          params,
+        }),
+        axios.get(`${API_URL}/auditoria`, { headers: authHeaders, params }),
       ]);
       const [
         dashboardRes,
@@ -238,6 +247,8 @@ function App() {
         facturasRes,
         empleadosRes,
         vacacionesRes,
+        movimientosRes,
+        auditoriaRes,
       ] = requests;
       const failed = requests.some((request) => request.status === "rejected");
 
@@ -272,6 +283,12 @@ function App() {
       }
       if (vacacionesRes.status === "fulfilled") {
         setVacaciones(vacacionesRes.value.data.vacaciones);
+      }
+      if (movimientosRes.status === "fulfilled") {
+        setMovimientosInventario(movimientosRes.value.data.movimientos);
+      }
+      if (auditoriaRes.status === "fulfilled") {
+        setEventosAuditoria(auditoriaRes.value.data.eventos);
       }
 
       if (failed) {
@@ -382,6 +399,9 @@ function App() {
     setFacturas([]);
     setEmpleados([]);
     setVacaciones([]);
+    setMovimientosInventario([]);
+    setEventosAuditoria([]);
+    setReporteActual(null);
     setEmpresas([]);
     setUsuarios([]);
     setVistaActual("dashboard");
@@ -775,9 +795,7 @@ function App() {
     );
 
     try {
-      await axios.post(
-        `${API_URL}/compras`,
-        {
+      const payload = {
           empresa_id: empresaActivaId,
           proveedor_id: compraForm.proveedor_id || null,
           estado: compraForm.estado,
@@ -792,14 +810,47 @@ function App() {
               costo_unitario: Number(compraForm.costo_unitario || 0),
             },
           ],
-        },
-        { headers: authHeaders }
-      );
+        };
+
+      if (compraForm.id) {
+        await axios.put(`${API_URL}/compras/${compraForm.id}`, payload, {
+          headers: authHeaders,
+        });
+        setMensaje("Orden de compra actualizada.");
+      } else {
+        await axios.post(`${API_URL}/compras`, payload, { headers: authHeaders });
+        setMensaje("Orden de compra creada correctamente.");
+      }
+
       setCompraForm(emptyCompra);
       await cargarDatos();
-      setMensaje("Orden de compra creada correctamente.");
     } catch {
       setError("No se pudo crear la orden de compra.");
+    }
+  }
+
+  async function abrirCompra(compraId) {
+    setError("");
+
+    try {
+      const response = await axios.get(`${API_URL}/compras/${compraId}`, {
+        headers: authHeaders,
+      });
+      const compra = response.data.compra;
+      const primeraLinea = compra.lineas?.[0] || {};
+
+      setCompraForm({
+        id: compra.id,
+        proveedor_id: compra.proveedor_id || "",
+        cod_producto: primeraLinea.cod_producto || primeraLinea.producto_id || "",
+        descripcion: primeraLinea.descripcion || "",
+        cantidad: primeraLinea.cantidad || 1,
+        costo_unitario: primeraLinea.costo_unitario || 0,
+        estado: compra.estado || "borrador",
+      });
+      setMensaje("Orden de compra abierta.");
+    } catch {
+      setError("No se pudo abrir la orden de compra.");
     }
   }
 
@@ -1035,6 +1086,20 @@ function App() {
     }
   }
 
+  async function cargarReporteOperativo(tipo) {
+    setError("");
+
+    try {
+      const response = await axios.get(`${API_URL}/reportes/${tipo}`, {
+        headers: authHeaders,
+        params: { empresa_id: empresaQuery },
+      });
+      setReporteActual({ tipo, data: response.data });
+    } catch {
+      setError("No se pudo cargar el reporte.");
+    }
+  }
+
   async function descargarReporte(tipo) {
     try {
       const endpoint =
@@ -1210,6 +1275,12 @@ function App() {
               </article>
 
               <article className="metric-card">
+                <span>Ventas del mes</span>
+                <strong>Q {Number(dashboard.ventas_mes || 0).toFixed(2)}</strong>
+                <small>Mes del rango actual</small>
+              </article>
+
+              <article className="metric-card">
                 <span>Alertas activas</span>
                 <strong>{dashboard.alertas_count}</strong>
                 <small>Productos con stock critico</small>
@@ -1222,9 +1293,33 @@ function App() {
               </article>
 
               <article className="metric-card">
-                <span>Top productos</span>
-                <strong>{dashboard.top_productos.length}</strong>
-                <small>Productos mas vendidos</small>
+                <span>Compras del mes</span>
+                <strong>Q {Number(dashboard.compras_mes || 0).toFixed(2)}</strong>
+                <small>Ordenes recibidas o registradas</small>
+              </article>
+
+              <article className="metric-card">
+                <span>Ordenes pendientes</span>
+                <strong>{dashboard.ordenes_pendientes || 0}</strong>
+                <small>Ordenes de venta activas</small>
+              </article>
+
+              <article className="metric-card">
+                <span>Cotizaciones pendientes</span>
+                <strong>{dashboard.cotizaciones_pendientes || 0}</strong>
+                <small>Cotizaciones por confirmar</small>
+              </article>
+
+              <article className="metric-card">
+                <span>Empleados activos</span>
+                <strong>{dashboard.empleados_activos || 0}</strong>
+                <small>Personal registrado activo</small>
+              </article>
+
+              <article className="metric-card">
+                <span>Vacaciones pendientes</span>
+                <strong>{dashboard.vacaciones_pendientes || 0}</strong>
+                <small>Solicitudes por aprobar</small>
               </article>
             </section>
 
@@ -1249,6 +1344,21 @@ function App() {
                   renderRow={(item) => [item.cod_producto, item.total_vendido]}
                 />
               </article>
+            </section>
+
+            <section className="panel">
+              <h2>Ultimos movimientos de inventario</h2>
+              <DataTable
+                columns={["Fecha", "Producto", "Tipo", "Cantidad", "Stock"]}
+                rows={dashboard.ultimos_movimientos || []}
+                renderRow={(movimiento) => [
+                  new Date(movimiento.created_at).toLocaleString(),
+                  movimiento.producto,
+                  movimiento.tipo_movimiento,
+                  movimiento.cantidad,
+                  movimiento.stock_nuevo,
+                ]}
+              />
             </section>
 
             <AlertasPanel alertas={alertas} />
@@ -1723,8 +1833,17 @@ function App() {
                     type="submit"
                     disabled={!empresaActivaId || !compraForm.cod_producto}
                   >
-                    Crear orden
+                    {compraForm.id ? "Guardar orden" : "Crear orden"}
                   </button>
+                  {compraForm.id && (
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      onClick={() => setCompraForm(emptyCompra)}
+                    >
+                      Nueva orden
+                    </button>
+                  )}
                 </form>
 
                 <div>
@@ -1740,19 +1859,22 @@ function App() {
                         {compra.estado}
                       </span>,
                       `Q ${Number(compra.total).toFixed(2)}`,
-                      compra.estado === "recibida" ? (
-                        "Recibida"
-                      ) : compra.estado === "cancelada" ? (
-                        "Cancelada"
-                      ) : (
+                      <div key={`${compra.id}-acciones`} className="inline-actions">
                         <button
-                          key={`${compra.id}-recibir`}
                           className="table-action"
-                          onClick={() => void recibirCompra(compra.id)}
+                          onClick={() => void abrirCompra(compra.id)}
                         >
-                          Recibir
+                          Abrir
                         </button>
-                      ),
+                        {compra.estado !== "recibida" && compra.estado !== "cancelada" && (
+                          <button
+                            className="table-action"
+                            onClick={() => void recibirCompra(compra.id)}
+                          >
+                            Recibir
+                          </button>
+                        )}
+                      </div>,
                     ]}
                   />
                 </div>
@@ -2023,7 +2145,16 @@ function App() {
             </div>
 
             <div className="tabs">
-              {["stock", "ajustes", "kardex", "alertas", "productos", "categorias"].map((tab) => (
+              {[
+                "stock",
+                "entradas",
+                "salidas",
+                "ajustes",
+                "kardex",
+                "alertas",
+                "productos",
+                "categorias",
+              ].map((tab) => (
                 <button
                   key={tab}
                   className={tabInventario === tab ? "active" : ""}
@@ -2061,6 +2192,24 @@ function App() {
                     {item.estado}
                   </span>,
                 ]}
+              />
+            )}
+
+            {tabInventario === "entradas" && (
+              <MovimientosInventarioTable
+                movimientos={movimientosInventario.filter((movimiento) =>
+                  Number(movimiento.cantidad) > 0 ||
+                  String(movimiento.tipo_movimiento).includes("entrada")
+                )}
+              />
+            )}
+
+            {tabInventario === "salidas" && (
+              <MovimientosInventarioTable
+                movimientos={movimientosInventario.filter((movimiento) =>
+                  Number(movimiento.cantidad) < 0 ||
+                  String(movimiento.tipo_movimiento).includes("salida")
+                )}
               />
             )}
 
@@ -2568,9 +2717,20 @@ function App() {
         {vistaActual === "reportes" && (
           <section className="panel">
             <h2>Reportes</h2>
-            <p>Descarga reportes operativos filtrados por empresa.</p>
+            <p>Reportes operativos filtrados por empresa.</p>
 
             <div className="report-buttons">
+              {["ventas", "inventario", "compras", "empleados", "vacaciones"].map(
+                (tipo) => (
+                  <button
+                    key={tipo}
+                    className="secondary-button"
+                    onClick={() => void cargarReporteOperativo(tipo)}
+                  >
+                    Ver {tipo}
+                  </button>
+                )
+              )}
               <button onClick={() => void descargarReporte("ventas")}>
                 Descargar ventas Excel
               </button>
@@ -2579,13 +2739,31 @@ function App() {
                 Descargar inventario Excel
               </button>
             </div>
+
+            {reporteActual && (
+              <section className="embedded-panel report-preview">
+                <h2>Reporte de {reporteActual.tipo}</h2>
+                <ReporteOperativoTable reporte={reporteActual} />
+              </section>
+            )}
           </section>
         )}
 
         {vistaActual === "auditoria" && (
           <section className="panel">
             <h2>Auditoria</h2>
-            <p>La auditoria queda preparada para eventos de ajustes y reportes.</p>
+            <p>Eventos recientes del sistema.</p>
+            <DataTable
+              columns={["Fecha", "Empresa", "Accion", "Modulo", "Detalle"]}
+              rows={eventosAuditoria}
+              renderRow={(evento) => [
+                new Date(evento.created_at).toLocaleString(),
+                evento.empresa || "-",
+                evento.accion,
+                evento.modulo || "-",
+                evento.detalle || "-",
+              ]}
+            />
           </section>
         )}
 
@@ -2894,6 +3072,59 @@ function calcularTotalCarrito(carrito, descuento) {
   const base = Math.max(subtotal - descuentoAplicado, 0);
 
   return base + base * 0.12;
+}
+
+function MovimientosInventarioTable({ movimientos }) {
+  return (
+    <DataTable
+      columns={["Fecha", "Producto", "Tipo", "Referencia", "Cantidad", "Anterior", "Nuevo"]}
+      rows={movimientos}
+      renderRow={(movimiento) => [
+        new Date(movimiento.created_at).toLocaleString(),
+        movimiento.producto,
+        movimiento.tipo_movimiento,
+        movimiento.referencia || "-",
+        movimiento.cantidad,
+        movimiento.stock_anterior,
+        movimiento.stock_nuevo,
+      ]}
+    />
+  );
+}
+
+function ReporteOperativoTable({ reporte }) {
+  const rows =
+    reporte.data.ventas ||
+    reporte.data.inventario ||
+    reporte.data.compras ||
+    reporte.data.empleados ||
+    reporte.data.vacaciones ||
+    [];
+  const firstRow = rows[0];
+
+  if (!firstRow) {
+    return <p className="empty-state">No hay datos para mostrar.</p>;
+  }
+
+  const columns = Object.keys(firstRow).slice(0, 8);
+
+  return (
+    <DataTable
+      columns={columns}
+      rows={rows}
+      renderRow={(row) =>
+        columns.map((column) => {
+          const value = row[column];
+
+          if (typeof value === "number") {
+            return Number(value).toFixed(2);
+          }
+
+          return value || "-";
+        })
+      }
+    />
+  );
 }
 
 function DataTable({ columns, rows, renderRow }) {

@@ -2135,6 +2135,41 @@ api.get(
   }
 );
 
+api.get("/inventario/movimientos", authMiddleware(MANAGEMENT_ROLES), async (req, res) => {
+  try {
+    const { tipo = "todos" } = req.query;
+    const empresaIds = await resolverEmpresasPermitidas(req, res);
+
+    if (!empresaIds) {
+      return;
+    }
+
+    const filtroEmpresa = empresaWhere("m", empresaIds, 2);
+    const result = await db.query(
+      `
+      select m.id, m.empresa_id, e.nombre as empresa, m.cod_producto,
+        coalesce(p.nombre, m.cod_producto) as producto, m.tipo_movimiento,
+        m.referencia, m.cantidad, m.stock_anterior, m.stock_nuevo,
+        m.usuario_id, m.created_at
+      from movimientos_inventario m
+      join empresas e on e.id = m.empresa_id
+      left join productos p on p.cod_producto = m.cod_producto
+        and p.empresa_id = m.empresa_id
+      where ($1 = 'todos' or m.tipo_movimiento = $1)
+      ${filtroEmpresa.clause}
+      order by m.created_at desc
+      limit 300
+      `,
+      [tipo, ...filtroEmpresa.params]
+    );
+
+    res.json({ total: result.rows.length, movimientos: result.rows });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Error al obtener movimientos de inventario" });
+  }
+});
+
 api.post("/inventario/ajuste", authMiddleware(MANAGEMENT_ROLES), async (req, res) => {
   const client = await db.connect();
 
@@ -3574,11 +3609,102 @@ api.get("/dashboard", authMiddleware(MANAGEMENT_ROLES), async (req, res) => {
       [...inventarioEmpresa.params]
     );
 
+    const mesInicio = `${fechaFin.slice(0, 7)}-01`;
+    const ventasMesEmpresa = empresaWhere("v", empresaIds, 3);
+    const ventasMes = await db.query(
+      `
+      select coalesce(sum(v.cantidad * v.precio_unitario), 0) as total
+      from ventas v
+      where v.fecha between $1 and $2
+      ${ventasMesEmpresa.clause}
+      `,
+      [mesInicio, fechaFin, ...ventasMesEmpresa.params]
+    );
+
+    const comprasEmpresa = empresaWhere("c", empresaIds, 3);
+    const comprasMes = await db.query(
+      `
+      select coalesce(sum(c.total), 0) as total
+      from compras c
+      where c.fecha between $1 and $2
+      ${comprasEmpresa.clause}
+      `,
+      [mesInicio, fechaFin, ...comprasEmpresa.params]
+    );
+
+    const cotizacionesEmpresa = empresaWhere("c", empresaIds, 1);
+    const cotizacionesPendientes = await db.query(
+      `
+      select count(*) as total
+      from cotizaciones c
+      where c.estado in ('cotizacion', 'cotizacion_enviada')
+      ${cotizacionesEmpresa.clause}
+      `,
+      [...cotizacionesEmpresa.params]
+    );
+
+    const ordenesEmpresa = empresaWhere("o", empresaIds, 1);
+    const ordenesPendientes = await db.query(
+      `
+      select count(*) as total
+      from ordenes_venta o
+      where o.estado not in ('cancelado')
+      ${ordenesEmpresa.clause}
+      `,
+      [...ordenesEmpresa.params]
+    );
+
+    const empleadosEmpresa = empresaWhere("em", empresaIds, 1);
+    const empleadosActivos = await db.query(
+      `
+      select count(*) as total
+      from empleados em
+      where em.estado = 'activo'
+      ${empleadosEmpresa.clause}
+      `,
+      [...empleadosEmpresa.params]
+    );
+
+    const vacacionesEmpresa = empresaWhere("va", empresaIds, 1);
+    const vacacionesPendientes = await db.query(
+      `
+      select count(*) as total
+      from vacaciones va
+      where va.estado = 'pendiente'
+      ${vacacionesEmpresa.clause}
+      `,
+      [...vacacionesEmpresa.params]
+    );
+
+    const movimientosEmpresa = empresaWhere("m", empresaIds, 1);
+    const ultimosMovimientos = await db.query(
+      `
+      select m.cod_producto, coalesce(p.nombre, m.cod_producto) as producto,
+        m.tipo_movimiento, m.cantidad, m.stock_nuevo, m.created_at
+      from movimientos_inventario m
+      left join productos p on p.cod_producto = m.cod_producto
+        and p.empresa_id = m.empresa_id
+      where true
+      ${movimientosEmpresa.clause}
+      order by m.created_at desc
+      limit 8
+      `,
+      [...movimientosEmpresa.params]
+    );
+
     res.json({
       ventas_totales: Number(ventas.rows[0].ventas_totales),
+      ventas_mes: Number(ventasMes.rows[0].total),
       comparativa_canales: canales.rows,
       top_productos: topProductos.rows,
       alertas_count: Number(alertas.rows[0].total),
+      compras_mes: Number(comprasMes.rows[0].total),
+      ordenes_pendientes: Number(ordenesPendientes.rows[0].total),
+      cotizaciones_pendientes: Number(cotizacionesPendientes.rows[0].total),
+      empleados_activos: Number(empleadosActivos.rows[0].total),
+      vacaciones_pendientes: Number(vacacionesPendientes.rows[0].total),
+      productos_stock_critico: Number(alertas.rows[0].total),
+      ultimos_movimientos: ultimosMovimientos.rows,
       empresas_filtradas: empresaIds,
     });
   } catch (error) {
@@ -3713,6 +3839,181 @@ api.get("/inventario", authMiddleware(MANAGEMENT_ROLES), async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Error al obtener inventario" });
+  }
+});
+
+api.get("/auditoria", authMiddleware(["admin", "gerente"]), async (req, res) => {
+  try {
+    const empresaIds = await resolverEmpresasPermitidas(req, res);
+
+    if (!empresaIds) {
+      return;
+    }
+
+    const filtroEmpresa = empresaWhere("a", empresaIds, 1);
+    const result = await db.query(
+      `
+      select a.id, a.usuario_id, a.empresa_id, e.nombre as empresa,
+        a.accion, a.modulo, a.detalle, a.ip, a.created_at
+      from auditoria a
+      left join empresas e on e.id = a.empresa_id
+      where true
+      ${filtroEmpresa.clause}
+      order by a.created_at desc
+      limit 200
+      `,
+      [...filtroEmpresa.params]
+    );
+
+    res.json({ total: result.rows.length, eventos: result.rows });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Error al obtener auditoria" });
+  }
+});
+
+api.get("/reportes/ventas", authMiddleware(MANAGEMENT_ROLES), async (req, res) => {
+  try {
+    const { fecha_i = "2026-01-01", fecha_f = "2026-12-31" } = req.query;
+    const empresaIds = await resolverEmpresasPermitidas(req, res);
+
+    if (!empresaIds) return;
+
+    const filtroEmpresa = empresaWhere("v", empresaIds, 3);
+    const result = await db.query(
+      `
+      select v.fecha, e.nombre as empresa, v.canal, v.cod_producto,
+        coalesce(p.nombre, 'Producto no registrado') as producto,
+        v.cantidad, v.precio_unitario,
+        (v.cantidad * v.precio_unitario) as total
+      from ventas v
+      left join empresas e on e.id = v.empresa_id
+      left join productos p on p.cod_producto = v.cod_producto
+        and (p.empresa_id = v.empresa_id or p.empresa_id is null or v.empresa_id is null)
+      where v.fecha between $1 and $2
+      ${filtroEmpresa.clause}
+      order by v.fecha desc
+      `,
+      [fecha_i, fecha_f, ...filtroEmpresa.params]
+    );
+
+    res.json({ total: result.rows.length, ventas: result.rows });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Error al generar reporte de ventas" });
+  }
+});
+
+api.get("/reportes/inventario", authMiddleware(MANAGEMENT_ROLES), async (req, res) => {
+  try {
+    const empresaIds = await resolverEmpresasPermitidas(req, res);
+
+    if (!empresaIds) return;
+
+    const filtroEmpresa = empresaWhere("i", empresaIds, 1);
+    const result = await db.query(
+      `
+      select e.nombre as empresa, i.cod_producto, p.nombre, p.categoria,
+        i.stock_fisico, i.stock_reportado, p.stock_minimo
+      from inventario i
+      join empresas e on e.id = i.empresa_id
+      join productos p on p.cod_producto = i.cod_producto
+        and (p.empresa_id = i.empresa_id or p.empresa_id is null or i.empresa_id is null)
+      where true
+      ${filtroEmpresa.clause}
+      order by p.nombre asc
+      `,
+      [...filtroEmpresa.params]
+    );
+
+    res.json({ total: result.rows.length, inventario: result.rows });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Error al generar reporte de inventario" });
+  }
+});
+
+api.get("/reportes/compras", authMiddleware(MANAGEMENT_ROLES), async (req, res) => {
+  try {
+    const empresaIds = await resolverEmpresasPermitidas(req, res);
+
+    if (!empresaIds) return;
+
+    const filtroEmpresa = empresaWhere("c", empresaIds, 1);
+    const result = await db.query(
+      `
+      select c.fecha, e.nombre as empresa, c.numero, c.estado,
+        coalesce(p.nombre, 'Proveedor no registrado') as proveedor,
+        c.subtotal, c.impuestos, c.total
+      from compras c
+      join empresas e on e.id = c.empresa_id
+      left join proveedores p on p.id = c.proveedor_id
+      where true
+      ${filtroEmpresa.clause}
+      order by c.fecha desc
+      `,
+      [...filtroEmpresa.params]
+    );
+
+    res.json({ total: result.rows.length, compras: result.rows });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Error al generar reporte de compras" });
+  }
+});
+
+api.get("/reportes/empleados", authMiddleware(MANAGEMENT_ROLES), async (req, res) => {
+  try {
+    const empresaIds = await resolverEmpresasPermitidas(req, res);
+
+    if (!empresaIds) return;
+
+    const filtroEmpresa = empresaWhere("em", empresaIds, 1);
+    const result = await db.query(
+      `
+      select e.nombre as empresa, em.codigo, em.nombre, em.puesto,
+        em.departamento, em.fecha_ingreso, em.salario_base, em.estado
+      from empleados em
+      join empresas e on e.id = em.empresa_id
+      where true
+      ${filtroEmpresa.clause}
+      order by em.nombre asc
+      `,
+      [...filtroEmpresa.params]
+    );
+
+    res.json({ total: result.rows.length, empleados: result.rows });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Error al generar reporte de empleados" });
+  }
+});
+
+api.get("/reportes/vacaciones", authMiddleware(MANAGEMENT_ROLES), async (req, res) => {
+  try {
+    const empresaIds = await resolverEmpresasPermitidas(req, res);
+
+    if (!empresaIds) return;
+
+    const filtroEmpresa = empresaWhere("v", empresaIds, 1);
+    const result = await db.query(
+      `
+      select e.nombre as empresa, em.nombre as empleado, v.fecha_inicio,
+        v.fecha_fin, v.dias_solicitados, v.estado, v.motivo
+      from vacaciones v
+      join empleados em on em.id = v.empleado_id
+      join empresas e on e.id = v.empresa_id
+      where true
+      ${filtroEmpresa.clause}
+      order by v.created_at desc
+      `,
+      [...filtroEmpresa.params]
+    );
+
+    res.json({ total: result.rows.length, vacaciones: result.rows });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Error al generar reporte de vacaciones" });
   }
 });
 
