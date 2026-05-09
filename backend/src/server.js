@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const XLSX = require("xlsx");
 const db = require("./db");
 require("dotenv").config();
 
@@ -194,6 +195,125 @@ app.get(
     } catch (error) {
       console.error(error);
       res.status(500).json({ error: "Error al cargar alertas" });
+    }
+  }
+);
+app.get(
+  "/api/v1/reportes/ventas-xlsx",
+  authMiddleware(["admin", "gerente", "supervisor"]),
+  async (req, res) => {
+    try {
+      const result = await db.query(
+        `
+        select 
+          v.fecha,
+          v.cod_producto,
+          coalesce(p.nombre, 'Producto no registrado') as producto,
+          v.canal,
+          v.cantidad,
+          v.precio_unitario,
+          (v.cantidad * v.precio_unitario) as total
+        from ventas v
+        left join productos p on p.cod_producto = v.cod_producto
+        order by v.fecha desc
+        `
+      );
+
+      const data = result.rows.map((row) => ({
+        Fecha: row.fecha,
+        Codigo: row.cod_producto,
+        Producto: row.producto,
+        Canal: row.canal,
+        Cantidad: Number(row.cantidad),
+        "Precio unitario": Number(row.precio_unitario),
+        Total: Number(row.total),
+      }));
+
+      const worksheet = XLSX.utils.json_to_sheet(data);
+      const workbook = XLSX.utils.book_new();
+
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Ventas");
+
+      const buffer = XLSX.write(workbook, {
+        type: "buffer",
+        bookType: "xlsx",
+      });
+
+      res.setHeader(
+        "Content-Disposition",
+        "attachment; filename=reporte_ventas.xlsx"
+      );
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
+
+      res.send(buffer);
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: "Error al generar reporte de ventas" });
+    }
+  }
+);
+
+app.get(
+  "/api/v1/reportes/inventario-xlsx",
+  authMiddleware(["admin", "gerente", "supervisor"]),
+  async (req, res) => {
+    try {
+      const result = await db.query(
+        `
+        select 
+          p.cod_producto,
+          p.nombre,
+          p.categoria,
+          i.stock_fisico,
+          i.stock_reportado,
+          p.stock_minimo,
+          case 
+            when i.stock_fisico = 0 then 'CRITICA'
+            when i.stock_fisico < coalesce(p.stock_minimo, 10) then 'ALERTA'
+            else 'NORMAL'
+          end as estado
+        from inventario i
+        join productos p on p.cod_producto = i.cod_producto
+        order by p.cod_producto asc
+        `
+      );
+
+      const data = result.rows.map((row) => ({
+        Codigo: row.cod_producto,
+        Producto: row.nombre,
+        Categoria: row.categoria,
+        "Stock fisico": Number(row.stock_fisico),
+        "Stock reportado": Number(row.stock_reportado),
+        "Stock minimo": Number(row.stock_minimo),
+        Estado: row.estado,
+      }));
+
+      const worksheet = XLSX.utils.json_to_sheet(data);
+      const workbook = XLSX.utils.book_new();
+
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Inventario");
+
+      const buffer = XLSX.write(workbook, {
+        type: "buffer",
+        bookType: "xlsx",
+      });
+
+      res.setHeader(
+        "Content-Disposition",
+        "attachment; filename=reporte_inventario.xlsx"
+      );
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
+
+      res.send(buffer);
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: "Error al generar reporte de inventario" });
     }
   }
 );

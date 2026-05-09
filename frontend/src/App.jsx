@@ -74,6 +74,38 @@ function App() {
     setAlertas([]);
   }
 
+  async function descargarReporte(tipo) {
+  try {
+    const endpoint =
+      tipo === "ventas"
+        ? `${API_URL}/reportes/ventas-xlsx`
+        : `${API_URL}/reportes/inventario-xlsx`;
+
+    const nombreArchivo =
+      tipo === "ventas" ? "reporte_ventas.xlsx" : "reporte_inventario.xlsx";
+
+    const response = await axios.get(endpoint, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      responseType: "blob",
+    });
+
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement("a");
+
+    link.href = url;
+    link.setAttribute("download", nombreArchivo);
+    document.body.appendChild(link);
+    link.click();
+
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  } catch (error) {
+    setError("No se pudo descargar el reporte.");
+  }
+}
+
   if (!token) {
     return (
       <main className="login-page">
@@ -133,19 +165,35 @@ function App() {
 
       <section className="content">
         <header className="topbar">
-          <div>
-            <h1>Dashboard principal</h1>
-            <p>
-              Resumen de ventas, canales, productos destacados y alertas de
-              inventario.
-            </p>
-          </div>
+  <div>
+    <h1>Dashboard principal</h1>
+    <p>
+      Resumen de ventas, canales, productos destacados y alertas de
+      inventario.
+    </p>
+  </div>
 
-          <div className="user-box">
-            <span>{usuario?.nombre || "Administrador"}</span>
-            <button onClick={logout}>Salir</button>
-          </div>
-        </header>
+  <div className="topbar-actions">
+    <button
+      className="secondary-button"
+      onClick={() => descargarReporte("ventas")}
+    >
+      Descargar ventas Excel
+    </button>
+
+    <button
+      className="secondary-button"
+      onClick={() => descargarReporte("inventario")}
+    >
+      Descargar inventario Excel
+    </button>
+
+    <div className="user-box">
+      <span>{usuario?.nombre || "Administrador"}</span>
+      <button onClick={logout}>Salir</button>
+    </div>
+  </div>
+</header>
 
         {error && <p className="error">{error}</p>}
 

@@ -318,3 +318,31 @@ th {
   color: #e5e7eb;
 }
 }
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.secondary-button {
+  background: white;
+  color: #2563eb;
+  border: 1px solid #c7d2fe;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+}
+
+.secondary-button:hover {
+  background: #eff6ff;
+}
+
+@media (max-width: 950px) {
+  .topbar-actions {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .user-box {
+    justify-content: space-between;
+  }
+}
