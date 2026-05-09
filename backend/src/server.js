@@ -243,6 +243,40 @@ async function generarNumeroDocumento(tabla, prefijo, empresaId) {
   return `${prefijo}-${String(siguiente).padStart(5, "0")}`;
 }
 
+async function registrarMovimientoInventario(
+  queryable,
+  {
+    empresaId,
+    codProducto,
+    tipoMovimiento,
+    referencia,
+    cantidad,
+    stockAnterior,
+    stockNuevo,
+    usuarioId,
+  }
+) {
+  await queryable.query(
+    `
+    insert into movimientos_inventario (
+      empresa_id, producto_id, cod_producto, tipo_movimiento, referencia,
+      cantidad, stock_anterior, stock_nuevo, usuario_id
+    )
+    values ($1, $2, $2, $3, $4, $5, $6, $7, $8)
+    `,
+    [
+      empresaId,
+      codProducto,
+      tipoMovimiento,
+      referencia || null,
+      cantidad,
+      stockAnterior,
+      stockNuevo,
+      String(usuarioId),
+    ]
+  );
+}
+
 async function registrarAuditoria(usuarioId, accion, detalle, empresaId = null) {
   try {
     await db.query(
@@ -1522,6 +1556,7 @@ api.post("/pos/venta", authMiddleware(MANAGEMENT_ROLES), async (req, res) => {
       }
 
       const stockActual = Number(inventario.rows[0].stock_fisico);
+      const stockNuevo = stockActual - item.cantidad;
 
       if (stockActual < item.cantidad) {
         throw new Error(`Stock insuficiente para ${item.cod_producto}`);
@@ -1531,6 +1566,17 @@ api.post("/pos/venta", authMiddleware(MANAGEMENT_ROLES), async (req, res) => {
         "update inventario set stock_fisico = stock_fisico - $1 where id = $2",
         [item.cantidad, inventario.rows[0].id]
       );
+
+      await registrarMovimientoInventario(client, {
+        empresaId: empresa_id,
+        codProducto: item.cod_producto,
+        tipoMovimiento: "salida_venta",
+        referencia: "punto_venta",
+        cantidad: item.cantidad * -1,
+        stockAnterior: stockActual,
+        stockNuevo,
+        usuarioId: req.user.id,
+      });
 
       await client.query(
         `
@@ -2034,6 +2080,178 @@ api.put(
   }
 );
 
+api.get(
+  "/inventario/kardex/:producto_id",
+  authMiddleware(MANAGEMENT_ROLES),
+  async (req, res) => {
+    try {
+      const empresaIds = await resolverEmpresasPermitidas(req, res);
+
+      if (!empresaIds) {
+        return;
+      }
+
+      const filtroEmpresa = empresaWhere("m", empresaIds, 2);
+      const result = await db.query(
+        `
+        select m.id, m.empresa_id, e.nombre as empresa, m.cod_producto,
+          coalesce(p.nombre, m.cod_producto) as producto, m.tipo_movimiento,
+          m.referencia, m.cantidad, m.stock_anterior, m.stock_nuevo,
+          m.usuario_id, m.created_at
+        from movimientos_inventario m
+        join empresas e on e.id = m.empresa_id
+        left join productos p on p.cod_producto = m.cod_producto
+          and p.empresa_id = m.empresa_id
+        where m.cod_producto = $1
+        ${filtroEmpresa.clause}
+        order by m.created_at desc
+        limit 200
+        `,
+        [req.params.producto_id, ...filtroEmpresa.params]
+      );
+
+      res.json({ total: result.rows.length, movimientos: result.rows });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: "Error al obtener Kardex" });
+    }
+  }
+);
+
+api.post("/inventario/ajuste", authMiddleware(MANAGEMENT_ROLES), async (req, res) => {
+  const client = await db.connect();
+
+  try {
+    const {
+      empresa_id,
+      cod_producto,
+      tipo = "ajuste_manual",
+      cantidad,
+      referencia,
+    } = req.body;
+
+    if (!(await validarEmpresaPermitida(req, res, empresa_id))) {
+      return;
+    }
+
+    const cantidadAjuste = Number(cantidad || 0);
+
+    if (!cod_producto || cantidadAjuste === 0) {
+      return res.status(400).json({ error: "Producto y cantidad son requeridos" });
+    }
+
+    await client.query("begin");
+    const inventario = await client.query(
+      `
+      select id, stock_fisico
+      from inventario
+      where empresa_id = $1 and cod_producto = $2
+      for update
+      `,
+      [empresa_id, cod_producto]
+    );
+    const stockAnterior =
+      inventario.rows.length > 0 ? Number(inventario.rows[0].stock_fisico) : 0;
+    const stockNuevo = stockAnterior + cantidadAjuste;
+
+    if (stockNuevo < 0) {
+      await client.query("rollback");
+      return res.status(409).json({ error: "El ajuste deja stock negativo" });
+    }
+
+    if (inventario.rows.length > 0) {
+      await client.query(
+        `
+        update inventario
+        set stock_fisico = $1, stock_reportado = $1
+        where id = $2
+        `,
+        [stockNuevo, inventario.rows[0].id]
+      );
+    } else {
+      await client.query(
+        `
+        insert into inventario (empresa_id, cod_producto, stock_fisico, stock_reportado)
+        values ($1, $2, $3, $3)
+        `,
+        [empresa_id, cod_producto, stockNuevo]
+      );
+    }
+
+    await registrarMovimientoInventario(client, {
+      empresaId: empresa_id,
+      codProducto: cod_producto,
+      tipoMovimiento: tipo,
+      referencia: referencia || "ajuste_manual",
+      cantidad: cantidadAjuste,
+      stockAnterior,
+      stockNuevo,
+      usuarioId: req.user.id,
+    });
+
+    await client.query("commit");
+    await registrarAuditoria(
+      req.user.id,
+      "INVENTARIO_AJUSTADO",
+      `Ajuste de inventario: ${cod_producto}`,
+      empresa_id
+    );
+
+    res.json({
+      ajuste: {
+        empresa_id,
+        cod_producto,
+        cantidad: cantidadAjuste,
+        stock_anterior: stockAnterior,
+        stock_nuevo: stockNuevo,
+      },
+    });
+  } catch (error) {
+    await client.query("rollback");
+    console.error(error);
+    res.status(500).json({ error: "Error al ajustar inventario" });
+  } finally {
+    client.release();
+  }
+});
+
+api.get("/inventario/alertas", authMiddleware(MANAGEMENT_ROLES), async (req, res) => {
+  try {
+    const empresaIds = await resolverEmpresasPermitidas(req, res);
+
+    if (!empresaIds) {
+      return;
+    }
+
+    const filtroEmpresa = empresaWhere("i", empresaIds, 1);
+    const result = await db.query(
+      `
+      select i.id, i.empresa_id, e.nombre as empresa, i.cod_producto,
+        p.nombre, i.stock_fisico as stock_actual,
+        coalesce(p.stock_minimo, 10) as stock_minimo,
+        case
+          when i.stock_fisico = 0 then 'CRITICA'
+          when i.stock_fisico < coalesce(p.stock_minimo, 10) * 0.5 then 'ALTA'
+          else 'MEDIA'
+        end as severidad
+      from inventario i
+      join empresas e on e.id = i.empresa_id
+      join productos p on p.cod_producto = i.cod_producto
+        and (p.empresa_id = i.empresa_id or p.empresa_id is null or i.empresa_id is null)
+      where i.stock_fisico < coalesce(p.stock_minimo, 10)
+      ${filtroEmpresa.clause}
+      order by i.stock_fisico asc
+      `,
+      [...filtroEmpresa.params]
+    );
+
+    res.json({ total: result.rows.length, alertas: result.rows });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Error al obtener alertas de inventario" });
+  }
+});
+
 api.get("/proveedores", authMiddleware(MANAGEMENT_ROLES), async (req, res) => {
   try {
     const empresaIds = await resolverEmpresasPermitidas(req, res);
@@ -2380,6 +2598,21 @@ api.post(
       await client.query("begin");
 
       for (const linea of detalle.rows) {
+        const inventarioActual = await client.query(
+          `
+          select id, stock_fisico
+          from inventario
+          where empresa_id = $1 and cod_producto = $2
+          for update
+          `,
+          [compraActual.empresa_id, linea.cod_producto]
+        );
+        const stockAnterior =
+          inventarioActual.rows.length > 0
+            ? Number(inventarioActual.rows[0].stock_fisico)
+            : 0;
+        const stockNuevo = stockAnterior + Number(linea.cantidad);
+
         const actualizado = await client.query(
           `
           update inventario
@@ -2402,6 +2635,17 @@ api.post(
             [compraActual.empresa_id, linea.cod_producto, linea.cantidad]
           );
         }
+
+        await registrarMovimientoInventario(client, {
+          empresaId: compraActual.empresa_id,
+          codProducto: linea.cod_producto,
+          tipoMovimiento: "entrada_compra",
+          referencia: compraActual.numero,
+          cantidad: Number(linea.cantidad),
+          stockAnterior,
+          stockNuevo,
+          usuarioId: req.user.id,
+        });
       }
 
       const result = await client.query(

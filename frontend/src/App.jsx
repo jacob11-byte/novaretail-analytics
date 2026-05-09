@@ -75,6 +75,13 @@ const emptyCompra = {
   estado: "borrador",
 };
 
+const emptyAjusteInventario = {
+  cod_producto: "",
+  tipo_operacion: "aumentar",
+  cantidad: 1,
+  referencia: "",
+};
+
 function App() {
   const [email, setEmail] = useState("admin@novaretail.com");
   const [password, setPassword] = useState("");
@@ -100,10 +107,12 @@ function App() {
   const [cortesCaja, setCortesCaja] = useState([]);
   const [proveedores, setProveedores] = useState([]);
   const [compras, setCompras] = useState([]);
+  const [kardex, setKardex] = useState([]);
   const [busquedaPos, setBusquedaPos] = useState("");
   const [metodoPagoPos, setMetodoPagoPos] = useState("efectivo");
   const [descuentoPos, setDescuentoPos] = useState(0);
   const [montoInicialCaja, setMontoInicialCaja] = useState(0);
+  const [kardexProducto, setKardexProducto] = useState("");
   const [empresaScope, setEmpresaScope] = useState("all");
   const [empresasSeleccionadas, setEmpresasSeleccionadas] = useState([]);
   const [vistaActual, setVistaActual] = useState("dashboard");
@@ -120,6 +129,9 @@ function App() {
   const [categoriaForm, setCategoriaForm] = useState(emptyCategoria);
   const [proveedorForm, setProveedorForm] = useState(emptyProveedor);
   const [compraForm, setCompraForm] = useState(emptyCompra);
+  const [ajusteInventarioForm, setAjusteInventarioForm] = useState(
+    emptyAjusteInventario
+  );
   const [error, setError] = useState("");
   const [mensaje, setMensaje] = useState("");
 
@@ -312,6 +324,7 @@ function App() {
     setCortesCaja([]);
     setProveedores([]);
     setCompras([]);
+    setKardex([]);
     setEmpresas([]);
     setUsuarios([]);
     setVistaActual("dashboard");
@@ -747,6 +760,58 @@ function App() {
       setMensaje("Compra recibida e inventario actualizado.");
     } catch {
       setError("No se pudo recibir la compra.");
+    }
+  }
+
+  async function ajustarInventario(event) {
+    event.preventDefault();
+    setError("");
+    setMensaje("");
+
+    const cantidadBase = Number(ajusteInventarioForm.cantidad || 0);
+    const cantidad =
+      ajusteInventarioForm.tipo_operacion === "disminuir"
+        ? cantidadBase * -1
+        : cantidadBase;
+
+    try {
+      await axios.post(
+        `${API_URL}/inventario/ajuste`,
+        {
+          empresa_id: empresaActivaId,
+          cod_producto: ajusteInventarioForm.cod_producto,
+          cantidad,
+          referencia: ajusteInventarioForm.referencia,
+        },
+        { headers: authHeaders }
+      );
+      setAjusteInventarioForm(emptyAjusteInventario);
+      await cargarDatos();
+      setMensaje("Stock ajustado correctamente.");
+    } catch {
+      setError("No se pudo ajustar el stock. Revisa la cantidad disponible.");
+    }
+  }
+
+  async function cargarKardex(codigoProducto = kardexProducto) {
+    setError("");
+
+    if (!codigoProducto) {
+      setKardex([]);
+      return;
+    }
+
+    try {
+      const response = await axios.get(
+        `${API_URL}/inventario/kardex/${codigoProducto}`,
+        {
+          headers: authHeaders,
+          params: { empresa_id: empresaQuery },
+        }
+      );
+      setKardex(response.data.movimientos);
+    } catch {
+      setError("No se pudo cargar el Kardex del producto.");
     }
   }
 
@@ -1558,13 +1623,17 @@ function App() {
             </div>
 
             <div className="tabs">
-              {["stock", "productos", "categorias"].map((tab) => (
+              {["stock", "ajustes", "kardex", "alertas", "productos", "categorias"].map((tab) => (
                 <button
                   key={tab}
                   className={tabInventario === tab ? "active" : ""}
                   onClick={() => setTabInventario(tab)}
                 >
-                  {tab === "stock" ? "Stock actual" : tab.charAt(0).toUpperCase() + tab.slice(1)}
+                  {tab === "stock"
+                    ? "Stock actual"
+                    : tab === "kardex"
+                      ? "Kardex"
+                      : tab.charAt(0).toUpperCase() + tab.slice(1)}
                 </button>
               ))}
             </div>
@@ -1594,6 +1663,140 @@ function App() {
                 ]}
               />
             )}
+
+            {tabInventario === "ajustes" && (
+              <div className="settings-grid">
+                <form className="admin-form" onSubmit={ajustarInventario}>
+                  <h2>Ajustar stock</h2>
+                  <select
+                    value={ajusteInventarioForm.cod_producto}
+                    onChange={(event) =>
+                      setAjusteInventarioForm({
+                        ...ajusteInventarioForm,
+                        cod_producto: event.target.value,
+                      })
+                    }
+                  >
+                    <option value="">Selecciona producto</option>
+                    {productos.map((producto) => (
+                      <option key={producto.cod_producto} value={producto.cod_producto}>
+                        {producto.cod_producto} - {producto.nombre}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    value={ajusteInventarioForm.tipo_operacion}
+                    onChange={(event) =>
+                      setAjusteInventarioForm({
+                        ...ajusteInventarioForm,
+                        tipo_operacion: event.target.value,
+                      })
+                    }
+                  >
+                    <option value="aumentar">Aumentar stock</option>
+                    <option value="disminuir">Disminuir stock</option>
+                  </select>
+                  <input
+                    type="number"
+                    min="1"
+                    step="1"
+                    value={ajusteInventarioForm.cantidad}
+                    onChange={(event) =>
+                      setAjusteInventarioForm({
+                        ...ajusteInventarioForm,
+                        cantidad: event.target.value,
+                      })
+                    }
+                    placeholder="Cantidad"
+                  />
+                  <input
+                    value={ajusteInventarioForm.referencia}
+                    onChange={(event) =>
+                      setAjusteInventarioForm({
+                        ...ajusteInventarioForm,
+                        referencia: event.target.value,
+                      })
+                    }
+                    placeholder="Referencia o motivo"
+                  />
+                  <button
+                    type="submit"
+                    disabled={!empresaActivaId || !ajusteInventarioForm.cod_producto}
+                  >
+                    Aplicar ajuste
+                  </button>
+                </form>
+
+                <div>
+                  <h2>Stock actual</h2>
+                  <DataTable
+                    columns={["Codigo", "Producto", "Stock", "Minimo", "Estado"]}
+                    rows={inventario}
+                    renderRow={(item) => [
+                      item.cod_producto,
+                      item.nombre,
+                      item.stock_fisico,
+                      item.stock_minimo,
+                      <span key={item.id} className={`badge ${item.estado.toLowerCase()}`}>
+                        {item.estado}
+                      </span>,
+                    ]}
+                  />
+                </div>
+              </div>
+            )}
+
+            {tabInventario === "kardex" && (
+              <div>
+                <div className="kardex-toolbar">
+                  <select
+                    value={kardexProducto}
+                    onChange={(event) => {
+                      setKardexProducto(event.target.value);
+                      void cargarKardex(event.target.value);
+                    }}
+                  >
+                    <option value="">Selecciona producto</option>
+                    {productos.map((producto) => (
+                      <option key={producto.cod_producto} value={producto.cod_producto}>
+                        {producto.cod_producto} - {producto.nombre}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    className="secondary-button"
+                    onClick={() => void cargarKardex()}
+                    disabled={!kardexProducto}
+                  >
+                    Actualizar
+                  </button>
+                </div>
+
+                <DataTable
+                  columns={[
+                    "Fecha",
+                    "Producto",
+                    "Tipo",
+                    "Referencia",
+                    "Cantidad",
+                    "Anterior",
+                    "Nuevo",
+                  ]}
+                  rows={kardex}
+                  renderRow={(movimiento) => [
+                    new Date(movimiento.created_at).toLocaleString(),
+                    movimiento.producto,
+                    movimiento.tipo_movimiento,
+                    movimiento.referencia || "-",
+                    movimiento.cantidad,
+                    movimiento.stock_anterior,
+                    movimiento.stock_nuevo,
+                  ]}
+                />
+              </div>
+            )}
+
+            {tabInventario === "alertas" && <AlertasPanel alertas={alertas} />}
 
             {tabInventario === "productos" && (
               <div className="settings-grid">
