@@ -317,6 +317,75 @@ app.get(
     }
   }
 );
+app.get(
+  "/api/v1/ventas",
+  authMiddleware(["admin", "gerente", "supervisor"]),
+  async (req, res) => {
+    try {
+      const result = await db.query(
+        `
+        select 
+          v.id,
+          v.fecha,
+          v.cod_producto,
+          coalesce(p.nombre, 'Producto no registrado') as producto,
+          v.canal,
+          v.cantidad,
+          v.precio_unitario,
+          (v.cantidad * v.precio_unitario) as total
+        from ventas v
+        left join productos p on p.cod_producto = v.cod_producto
+        order by v.fecha desc
+        `
+      );
+
+      res.json({
+        total: result.rows.length,
+        ventas: result.rows,
+      });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: "Error al obtener ventas" });
+    }
+  }
+);
+
+app.get(
+  "/api/v1/inventario",
+  authMiddleware(["admin", "gerente", "supervisor"]),
+  async (req, res) => {
+    try {
+      const result = await db.query(
+        `
+        select 
+          i.id,
+          p.cod_producto,
+          p.nombre,
+          p.categoria,
+          i.stock_fisico,
+          i.stock_reportado,
+          p.stock_minimo,
+          case 
+            when i.stock_fisico = 0 then 'CRITICA'
+            when i.stock_fisico < coalesce(p.stock_minimo, 10) then 'ALERTA'
+            else 'NORMAL'
+          end as estado
+        from inventario i
+        join productos p on p.cod_producto = i.cod_producto
+        order by p.cod_producto asc
+        `
+      );
+
+      res.json({
+        total: result.rows.length,
+        inventario: result.rows,
+      });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: "Error al obtener inventario" });
+    }
+  }
+);
 
 app.listen(PORT, () => {
   console.log(`API NovaRetail ejecutándose en puerto ${PORT}`);

@@ -346,3 +346,52 @@ th {
     justify-content: space-between;
   }
 }
+.menu-link {
+  width: 100%;
+  background: transparent;
+  color: #e5e7eb;
+  text-align: left;
+  padding: 12px 14px;
+  border-radius: 12px;
+  box-shadow: none;
+}
+
+.menu-link:hover,
+.menu-link.active {
+  background: #1f2937;
+  color: white;
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.panel-header h2,
+.panel-header p {
+  margin: 0;
+}
+
+.panel-header p {
+  color: #64748b;
+  margin-top: 6px;
+}
+
+.report-buttons {
+  display: flex;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.badge.normal {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.badge.alerta {
+  background: #ffedd5;
+  color: #9a3412;
+}
