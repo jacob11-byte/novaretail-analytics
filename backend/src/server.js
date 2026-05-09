@@ -174,6 +174,37 @@ function calcularLineas(lineas = []) {
   };
 }
 
+function calcularVentaPos(items = [], descuento = 0) {
+  const detalle = items.map((item) => {
+    const cantidad = Number(item.cantidad || 0);
+    const precioUnitario = Number(item.precio_unitario || 0);
+    const subtotal = Number((cantidad * precioUnitario).toFixed(2));
+
+    return {
+      producto_id: item.producto_id || item.cod_producto || null,
+      cod_producto: item.cod_producto || item.producto_id || null,
+      descripcion: item.descripcion || item.nombre || "",
+      cantidad,
+      precio_unitario: precioUnitario,
+      subtotal,
+    };
+  });
+  const subtotal = Number(
+    detalle.reduce((total, item) => total + item.subtotal, 0).toFixed(2)
+  );
+  const descuentoAplicado = Math.min(Number(descuento || 0), subtotal);
+  const baseImpuesto = Math.max(subtotal - descuentoAplicado, 0);
+  const impuestos = Number((baseImpuesto * 0.12).toFixed(2));
+
+  return {
+    detalle,
+    subtotal,
+    descuento: Number(descuentoAplicado.toFixed(2)),
+    impuestos,
+    total: Number((baseImpuesto + impuestos).toFixed(2)),
+  };
+}
+
 async function generarNumeroDocumento(tabla, prefijo, empresaId) {
   const result = await db.query(
     `select count(*)::int as total from ${tabla} where empresa_id = $1`,
@@ -1381,6 +1412,300 @@ api.post(
     }
   }
 );
+
+api.get("/pos/productos", authMiddleware(MANAGEMENT_ROLES), async (req, res) => {
+  try {
+    const { q = "" } = req.query;
+    const empresaIds = await resolverEmpresasPermitidas(req, res);
+
+    if (!empresaIds) {
+      return;
+    }
+
+    const filtroEmpresa = empresaWhere("p", empresaIds, 2);
+    const result = await db.query(
+      `
+      select
+        p.cod_producto,
+        p.nombre,
+        p.categoria,
+        p.empresa_id,
+        coalesce(i.stock_fisico, 0) as stock_fisico,
+        coalesce((
+          select avg(v.precio_unitario)
+          from ventas v
+          where v.cod_producto = p.cod_producto
+            and (v.empresa_id = p.empresa_id or v.empresa_id is null or p.empresa_id is null)
+        ), 0) as precio_unitario
+      from productos p
+      left join inventario i on i.cod_producto = p.cod_producto
+        and (i.empresa_id = p.empresa_id or i.empresa_id is null or p.empresa_id is null)
+      where ($1 = '' or p.cod_producto ilike '%' || $1 || '%' or p.nombre ilike '%' || $1 || '%')
+      ${filtroEmpresa.clause}
+      order by p.nombre asc
+      limit 50
+      `,
+      [q, ...filtroEmpresa.params]
+    );
+
+    res.json({ total: result.rows.length, productos: result.rows });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Error al buscar productos POS" });
+  }
+});
+
+api.post("/pos/venta", authMiddleware(MANAGEMENT_ROLES), async (req, res) => {
+  const client = await db.connect();
+
+  try {
+    const {
+      empresa_id,
+      items = [],
+      descuento = 0,
+      metodo_pago = "efectivo",
+    } = req.body;
+
+    if (!(await validarEmpresaPermitida(req, res, empresa_id))) {
+      return;
+    }
+
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ error: "La venta requiere productos" });
+    }
+
+    const venta = calcularVentaPos(items, descuento);
+
+    await client.query("begin");
+
+    for (const item of venta.detalle) {
+      const inventario = await client.query(
+        `
+        select id, stock_fisico
+        from inventario
+        where empresa_id = $1 and cod_producto = $2
+        for update
+        `,
+        [empresa_id, item.cod_producto]
+      );
+
+      if (inventario.rows.length === 0) {
+        throw new Error(`Producto sin inventario: ${item.cod_producto}`);
+      }
+
+      const stockActual = Number(inventario.rows[0].stock_fisico);
+
+      if (stockActual < item.cantidad) {
+        throw new Error(`Stock insuficiente para ${item.cod_producto}`);
+      }
+
+      await client.query(
+        "update inventario set stock_fisico = stock_fisico - $1 where id = $2",
+        [item.cantidad, inventario.rows[0].id]
+      );
+
+      await client.query(
+        `
+        insert into ventas (fecha, cod_producto, canal, cantidad, precio_unitario, empresa_id)
+        values (current_date, $1, 'punto_venta', $2, $3, $4)
+        `,
+        [item.cod_producto, item.cantidad, item.precio_unitario, empresa_id]
+      );
+    }
+
+    const ventaResult = await client.query(
+      `
+      insert into punto_venta (
+        empresa_id, usuario_id, subtotal, impuestos, descuento, total,
+        metodo_pago, estado
+      )
+      values ($1, $2, $3, $4, $5, $6, $7, 'finalizada')
+      returning *
+      `,
+      [
+        empresa_id,
+        String(req.user.id),
+        venta.subtotal,
+        venta.impuestos,
+        venta.descuento,
+        venta.total,
+        metodo_pago,
+      ]
+    );
+
+    for (const item of venta.detalle) {
+      await client.query(
+        `
+        insert into punto_venta_detalle (
+          punto_venta_id, producto_id, cod_producto, descripcion,
+          cantidad, precio_unitario, subtotal
+        )
+        values ($1, $2, $3, $4, $5, $6, $7)
+        `,
+        [
+          ventaResult.rows[0].id,
+          item.producto_id,
+          item.cod_producto,
+          item.descripcion,
+          item.cantidad,
+          item.precio_unitario,
+          item.subtotal,
+        ]
+      );
+    }
+
+    await client.query("commit");
+    await registrarAuditoria(
+      req.user.id,
+      "POS_VENTA_CREADA",
+      `Venta POS creada: ${ventaResult.rows[0].id}`,
+      empresa_id
+    );
+
+    res.status(201).json({ venta: ventaResult.rows[0] });
+  } catch (error) {
+    await client.query("rollback");
+    console.error(error);
+    res.status(400).json({ error: error.message || "Error al registrar venta POS" });
+  } finally {
+    client.release();
+  }
+});
+
+api.get("/pos/ventas-dia", authMiddleware(MANAGEMENT_ROLES), async (req, res) => {
+  try {
+    const empresaIds = await resolverEmpresasPermitidas(req, res);
+
+    if (!empresaIds) {
+      return;
+    }
+
+    const filtroEmpresa = empresaWhere("pv", empresaIds, 1);
+    const result = await db.query(
+      `
+      select pv.id, pv.empresa_id, e.nombre as empresa, pv.fecha, pv.subtotal,
+        pv.impuestos, pv.descuento, pv.total, pv.metodo_pago, pv.estado
+      from punto_venta pv
+      join empresas e on e.id = pv.empresa_id
+      where pv.fecha::date = current_date
+      ${filtroEmpresa.clause}
+      order by pv.fecha desc
+      `,
+      [...filtroEmpresa.params]
+    );
+
+    res.json({ total: result.rows.length, ventas: result.rows });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Error al obtener ventas POS del dia" });
+  }
+});
+
+api.post("/pos/corte", authMiddleware(MANAGEMENT_ROLES), async (req, res) => {
+  try {
+    const { empresa_id, monto_inicial = 0, cerrar = false } = req.body;
+
+    if (!(await validarEmpresaPermitida(req, res, empresa_id))) {
+      return;
+    }
+
+    if (!cerrar) {
+      const abierto = await db.query(
+        "select id from cortes_caja where empresa_id=$1 and usuario_id=$2 and estado='abierto'",
+        [empresa_id, String(req.user.id)]
+      );
+
+      if (abierto.rows.length > 0) {
+        return res.status(409).json({ error: "Ya existe un corte abierto" });
+      }
+
+      const result = await db.query(
+        `
+        insert into cortes_caja (empresa_id, usuario_id, monto_inicial, estado)
+        values ($1, $2, $3, 'abierto')
+        returning *
+        `,
+        [empresa_id, String(req.user.id), monto_inicial]
+      );
+
+      return res.status(201).json({ corte: result.rows[0] });
+    }
+
+    const resumen = await db.query(
+      `
+      select
+        coalesce(sum(case when metodo_pago = 'efectivo' then total else 0 end), 0) as ventas_efectivo,
+        coalesce(sum(case when metodo_pago = 'tarjeta' then total else 0 end), 0) as ventas_tarjeta,
+        coalesce(sum(case when metodo_pago = 'transferencia' then total else 0 end), 0) as ventas_transferencia,
+        coalesce(sum(total), 0) as total_ventas
+      from punto_venta
+      where empresa_id = $1 and usuario_id = $2 and fecha::date = current_date
+      `,
+      [empresa_id, String(req.user.id)]
+    );
+
+    const result = await db.query(
+      `
+      update cortes_caja
+      set fecha_cierre = now(),
+          ventas_efectivo = $1,
+          ventas_tarjeta = $2,
+          ventas_transferencia = $3,
+          total_ventas = $4,
+          estado = 'cerrado',
+          updated_at = now()
+      where empresa_id = $5 and usuario_id = $6 and estado = 'abierto'
+      returning *
+      `,
+      [
+        resumen.rows[0].ventas_efectivo,
+        resumen.rows[0].ventas_tarjeta,
+        resumen.rows[0].ventas_transferencia,
+        resumen.rows[0].total_ventas,
+        empresa_id,
+        String(req.user.id),
+      ]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "No hay corte abierto para cerrar" });
+    }
+
+    res.json({ corte: result.rows[0] });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Error al procesar corte de caja" });
+  }
+});
+
+api.get("/pos/cortes", authMiddleware(MANAGEMENT_ROLES), async (req, res) => {
+  try {
+    const empresaIds = await resolverEmpresasPermitidas(req, res);
+
+    if (!empresaIds) {
+      return;
+    }
+
+    const filtroEmpresa = empresaWhere("c", empresaIds, 1);
+    const result = await db.query(
+      `
+      select c.*, e.nombre as empresa
+      from cortes_caja c
+      join empresas e on e.id = c.empresa_id
+      where true
+      ${filtroEmpresa.clause}
+      order by c.created_at desc
+      limit 50
+      `,
+      [...filtroEmpresa.params]
+    );
+
+    res.json({ total: result.rows.length, cortes: result.rows });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Error al obtener cortes de caja" });
+  }
+});
 
 api.get("/dashboard", authMiddleware(MANAGEMENT_ROLES), async (req, res) => {
   try {

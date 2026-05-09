@@ -415,6 +415,61 @@ td {
   color: #334155;
 }
 
+.pos-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(360px, 0.75fr);
+  gap: 22px;
+}
+
+.pos-products,
+.pos-cart {
+  min-width: 0;
+}
+
+.pos-search,
+.cash-actions {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.pos-summary {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 14px;
+  border-radius: 12px;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+}
+
+.pos-summary label {
+  display: grid;
+  gap: 6px;
+}
+
+.pos-summary strong {
+  font-size: 22px;
+}
+
+.pos-cart input[type="number"] {
+  min-width: 82px;
+}
+
+.pos-history {
+  margin-top: 22px;
+}
+
+.embedded-panel {
+  box-shadow: none;
+  border: 1px solid #e5e7eb;
+}
+
+.cash-actions {
+  grid-template-columns: 1fr auto auto;
+}
+
 button:disabled {
   cursor: not-allowed;
   opacity: 0.6;
@@ -459,7 +514,8 @@ button:disabled {
 @media (max-width: 1100px) {
   .cards-grid,
   .main-grid,
-  .settings-grid {
+  .settings-grid,
+  .pos-grid {
     grid-template-columns: 1fr;
   }
 }
@@ -490,5 +546,10 @@ button:disabled {
 
   .user-box {
     justify-content: space-between;
+  }
+
+  .pos-search,
+  .cash-actions {
+    grid-template-columns: 1fr;
   }
 }

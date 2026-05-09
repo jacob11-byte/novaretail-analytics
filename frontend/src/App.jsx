@@ -59,6 +59,14 @@ function App() {
   const [cotizaciones, setCotizaciones] = useState([]);
   const [ordenesVenta, setOrdenesVenta] = useState([]);
   const [inventario, setInventario] = useState([]);
+  const [productosPos, setProductosPos] = useState([]);
+  const [carritoPos, setCarritoPos] = useState([]);
+  const [ventasPosDia, setVentasPosDia] = useState([]);
+  const [cortesCaja, setCortesCaja] = useState([]);
+  const [busquedaPos, setBusquedaPos] = useState("");
+  const [metodoPagoPos, setMetodoPagoPos] = useState("efectivo");
+  const [descuentoPos, setDescuentoPos] = useState(0);
+  const [montoInicialCaja, setMontoInicialCaja] = useState(0);
   const [empresaScope, setEmpresaScope] = useState("all");
   const [empresasSeleccionadas, setEmpresasSeleccionadas] = useState([]);
   const [vistaActual, setVistaActual] = useState("dashboard");
@@ -106,6 +114,8 @@ function App() {
         clientesRes,
         cotizacionesRes,
         ordenesRes,
+        ventasPosRes,
+        cortesRes,
       ] =
         await Promise.all([
           axios.get(`${API_URL}/dashboard`, { headers: authHeaders, params }),
@@ -115,6 +125,8 @@ function App() {
           axios.get(`${API_URL}/clientes`, { headers: authHeaders, params }),
           axios.get(`${API_URL}/cotizaciones`, { headers: authHeaders, params }),
           axios.get(`${API_URL}/ordenes-venta`, { headers: authHeaders, params }),
+          axios.get(`${API_URL}/pos/ventas-dia`, { headers: authHeaders, params }),
+          axios.get(`${API_URL}/pos/cortes`, { headers: authHeaders, params }),
         ]);
 
       setDashboard(dashboardRes.data);
@@ -124,6 +136,8 @@ function App() {
       setClientes(clientesRes.data.clientes);
       setCotizaciones(cotizacionesRes.data.cotizaciones);
       setOrdenesVenta(ordenesRes.data.ordenes);
+      setVentasPosDia(ventasPosRes.data.ventas);
+      setCortesCaja(cortesRes.data.cortes);
     },
     [authHeaders, empresaQuery, token]
   );
@@ -212,6 +226,10 @@ function App() {
     setCotizaciones([]);
     setOrdenesVenta([]);
     setInventario([]);
+    setProductosPos([]);
+    setCarritoPos([]);
+    setVentasPosDia([]);
+    setCortesCaja([]);
     setEmpresas([]);
     setUsuarios([]);
     setVistaActual("dashboard");
@@ -418,6 +436,126 @@ function App() {
     }
   }
 
+  async function buscarProductosPos(query = busquedaPos) {
+    setError("");
+
+    try {
+      const response = await axios.get(`${API_URL}/pos/productos`, {
+        headers: authHeaders,
+        params: {
+          empresa_id: empresaActivaId || empresaQuery,
+          q: query,
+        },
+      });
+      setProductosPos(response.data.productos);
+    } catch {
+      setError("No se pudieron buscar productos para POS.");
+    }
+  }
+
+  function agregarProductoPos(producto) {
+    setCarritoPos((current) => {
+      const existente = current.find(
+        (item) => item.cod_producto === producto.cod_producto
+      );
+
+      if (existente) {
+        return current.map((item) =>
+          item.cod_producto === producto.cod_producto
+            ? { ...item, cantidad: Number(item.cantidad) + 1 }
+            : item
+        );
+      }
+
+      return [
+        ...current,
+        {
+          cod_producto: producto.cod_producto,
+          descripcion: producto.nombre,
+          cantidad: 1,
+          precio_unitario: Number(producto.precio_unitario || 0),
+        },
+      ];
+    });
+  }
+
+  function actualizarCantidadPos(codProducto, cantidad) {
+    setCarritoPos((current) =>
+      current
+        .map((item) =>
+          item.cod_producto === codProducto
+            ? { ...item, cantidad: Number(cantidad || 0) }
+            : item
+        )
+        .filter((item) => item.cantidad > 0)
+    );
+  }
+
+  async function finalizarVentaPos() {
+    setError("");
+    setMensaje("");
+
+    try {
+      await axios.post(
+        `${API_URL}/pos/venta`,
+        {
+          empresa_id: empresaActivaId,
+          items: carritoPos,
+          descuento: Number(descuentoPos || 0),
+          metodo_pago: metodoPagoPos,
+        },
+        { headers: authHeaders }
+      );
+      setCarritoPos([]);
+      setDescuentoPos(0);
+      await cargarDatos();
+      await buscarProductosPos();
+      setMensaje("Venta POS finalizada correctamente.");
+    } catch {
+      setError("No se pudo finalizar la venta POS. Revisa stock y productos.");
+    }
+  }
+
+  async function abrirCorteCaja() {
+    setError("");
+    setMensaje("");
+
+    try {
+      await axios.post(
+        `${API_URL}/pos/corte`,
+        {
+          empresa_id: empresaActivaId,
+          monto_inicial: Number(montoInicialCaja || 0),
+        },
+        { headers: authHeaders }
+      );
+      await cargarDatos();
+      setMensaje("Corte de caja abierto.");
+    } catch {
+      setError("No se pudo abrir el corte de caja.");
+    }
+  }
+
+  async function cerrarCorteCaja() {
+    setError("");
+    setMensaje("");
+
+    try {
+      await axios.post(
+        `${API_URL}/pos/corte`,
+        {
+          empresa_id: empresaActivaId,
+          cerrar: true,
+        },
+        { headers: authHeaders }
+      );
+      await cargarDatos();
+      setMensaje("Corte de caja cerrado.");
+    } catch {
+      setError("No se pudo cerrar el corte de caja.");
+    }
+  }
+
   async function descargarReporte(tipo) {
     try {
       const endpoint =
@@ -496,7 +634,7 @@ function App() {
         </div>
 
         <nav>
-          {["dashboard", "ventas", "inventario", "reportes", "auditoria"].map(
+          {["dashboard", "ventas", "pos", "inventario", "reportes", "auditoria"].map(
             (vista) => (
               <button
                 key={vista}
@@ -505,6 +643,8 @@ function App() {
               >
                 {vista === "dashboard"
                   ? "Dashboard"
+                  : vista === "pos"
+                    ? "Punto de venta"
                   : vista.charAt(0).toUpperCase() + vista.slice(1)}
               </button>
             )
@@ -811,6 +951,169 @@ function App() {
                 ]}
               />
             )}
+          </section>
+        )}
+
+        {vistaActual === "pos" && (
+          <section className="panel">
+            <div className="panel-header">
+              <div>
+                <h2>Punto de venta</h2>
+                <p>Venta rapida con carrito, pagos y corte de caja.</p>
+              </div>
+
+              <button
+                className="secondary-button"
+                onClick={() => void buscarProductosPos()}
+                disabled={!empresaActivaId}
+              >
+                Buscar productos
+              </button>
+            </div>
+
+            <div className="pos-grid">
+              <section className="pos-products">
+                <div className="pos-search">
+                  <input
+                    value={busquedaPos}
+                    onChange={(event) => setBusquedaPos(event.target.value)}
+                    placeholder="Buscar por codigo o nombre"
+                  />
+                  <button onClick={() => void buscarProductosPos()}>
+                    Buscar
+                  </button>
+                </div>
+
+                <DataTable
+                  columns={["Producto", "Codigo", "Stock", "Precio", "Accion"]}
+                  rows={productosPos}
+                  renderRow={(producto) => [
+                    producto.nombre,
+                    producto.cod_producto,
+                    producto.stock_fisico,
+                    `Q ${Number(producto.precio_unitario).toFixed(2)}`,
+                    <button
+                      key={`${producto.cod_producto}-add`}
+                      className="table-action"
+                      onClick={() => agregarProductoPos(producto)}
+                    >
+                      Agregar
+                    </button>,
+                  ]}
+                />
+              </section>
+
+              <section className="pos-cart">
+                <h2>Carrito</h2>
+                <DataTable
+                  columns={["Producto", "Cant.", "Precio", "Subtotal"]}
+                  rows={carritoPos}
+                  renderRow={(item) => [
+                    item.descripcion,
+                    <input
+                      key={`${item.cod_producto}-cantidad`}
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={item.cantidad}
+                      onChange={(event) =>
+                        actualizarCantidadPos(item.cod_producto, event.target.value)
+                      }
+                    />,
+                    `Q ${Number(item.precio_unitario).toFixed(2)}`,
+                    `Q ${(Number(item.cantidad) * Number(item.precio_unitario)).toFixed(2)}`,
+                  ]}
+                />
+
+                <div className="pos-summary">
+                  <label>
+                    Descuento
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={descuentoPos}
+                      onChange={(event) => setDescuentoPos(event.target.value)}
+                    />
+                  </label>
+                  <label>
+                    Metodo de pago
+                    <select
+                      value={metodoPagoPos}
+                      onChange={(event) => setMetodoPagoPos(event.target.value)}
+                    >
+                      <option value="efectivo">Efectivo</option>
+                      <option value="tarjeta">Tarjeta</option>
+                      <option value="transferencia">Transferencia</option>
+                      <option value="mixto">Mixto</option>
+                    </select>
+                  </label>
+                  <strong>Total: Q {calcularTotalCarrito(carritoPos, descuentoPos).toFixed(2)}</strong>
+                  <button
+                    onClick={() => void finalizarVentaPos()}
+                    disabled={!empresaActivaId || carritoPos.length === 0}
+                  >
+                    Finalizar venta
+                  </button>
+                </div>
+              </section>
+            </div>
+
+            <section className="main-grid pos-history">
+              <article className="panel embedded-panel">
+                <div className="panel-header">
+                  <div>
+                    <h2>Corte de caja</h2>
+                    <p>Apertura y cierre del dia actual.</p>
+                  </div>
+                </div>
+                <div className="cash-actions">
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={montoInicialCaja}
+                    onChange={(event) => setMontoInicialCaja(event.target.value)}
+                    placeholder="Monto inicial"
+                  />
+                  <button onClick={() => void abrirCorteCaja()} disabled={!empresaActivaId}>
+                    Abrir
+                  </button>
+                  <button
+                    className="secondary-button"
+                    onClick={() => void cerrarCorteCaja()}
+                    disabled={!empresaActivaId}
+                  >
+                    Cerrar
+                  </button>
+                </div>
+
+                <DataTable
+                  columns={["Empresa", "Inicial", "Ventas", "Estado"]}
+                  rows={cortesCaja}
+                  renderRow={(corte) => [
+                    corte.empresa,
+                    `Q ${Number(corte.monto_inicial).toFixed(2)}`,
+                    `Q ${Number(corte.total_ventas).toFixed(2)}`,
+                    corte.estado,
+                  ]}
+                />
+              </article>
+
+              <article className="panel embedded-panel">
+                <h2>Ventas del dia</h2>
+                <DataTable
+                  columns={["Hora", "Metodo", "Descuento", "Total"]}
+                  rows={ventasPosDia}
+                  renderRow={(venta) => [
+                    new Date(venta.fecha).toLocaleTimeString(),
+                    venta.metodo_pago,
+                    `Q ${Number(venta.descuento).toFixed(2)}`,
+                    `Q ${Number(venta.total).toFixed(2)}`,
+                  ]}
+                />
+              </article>
+            </section>
           </section>
         )}
 
@@ -1173,6 +1476,18 @@ function DocumentoVentaForm({
       </button>
     </form>
   );
+}
+
+function calcularTotalCarrito(carrito, descuento) {
+  const subtotal = carrito.reduce(
+    (total, item) =>
+      total + Number(item.cantidad || 0) * Number(item.precio_unitario || 0),
+    0
+  );
+  const descuentoAplicado = Math.min(Number(descuento || 0), subtotal);
+  const base = Math.max(subtotal - descuentoAplicado, 0);
+
+  return base + base * 0.12;
 }
 
 function DataTable({ columns, rows, renderRow }) {
