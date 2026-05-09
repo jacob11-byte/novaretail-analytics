@@ -23,6 +23,25 @@ const emptyUsuario = {
   empresas: [],
 };
 
+const emptyCliente = {
+  nombre: "",
+  nit: "",
+  telefono: "",
+  email: "",
+  direccion: "",
+};
+
+const emptyDocumentoVenta = {
+  cliente_id: "",
+  fecha_vencimiento: "",
+  orden_despacho: "",
+  descripcion: "",
+  cantidad: 1,
+  unidad: "unidad",
+  precio_unitario: 0,
+  impuesto_porcentaje: 12,
+};
+
 function App() {
   const [email, setEmail] = useState("admin@novaretail.com");
   const [password, setPassword] = useState("");
@@ -36,13 +55,20 @@ function App() {
   const [empresas, setEmpresas] = useState([]);
   const [usuarios, setUsuarios] = useState([]);
   const [ventas, setVentas] = useState([]);
+  const [clientes, setClientes] = useState([]);
+  const [cotizaciones, setCotizaciones] = useState([]);
+  const [ordenesVenta, setOrdenesVenta] = useState([]);
   const [inventario, setInventario] = useState([]);
   const [empresaScope, setEmpresaScope] = useState("all");
   const [empresasSeleccionadas, setEmpresasSeleccionadas] = useState([]);
   const [vistaActual, setVistaActual] = useState("dashboard");
+  const [tabVentas, setTabVentas] = useState("cotizaciones");
   const [tabAjustes, setTabAjustes] = useState("empresas");
   const [empresaForm, setEmpresaForm] = useState(emptyEmpresa);
   const [usuarioForm, setUsuarioForm] = useState(emptyUsuario);
+  const [clienteForm, setClienteForm] = useState(emptyCliente);
+  const [cotizacionForm, setCotizacionForm] = useState(emptyDocumentoVenta);
+  const [ordenForm, setOrdenForm] = useState(emptyDocumentoVenta);
   const [error, setError] = useState("");
   const [mensaje, setMensaje] = useState("");
 
@@ -62,6 +88,8 @@ function App() {
   }, [empresaScope, empresasSeleccionadas]);
 
   const puedeAdministrar = usuario?.rol === "admin";
+  const empresaActivaId =
+    empresasSeleccionadas[0] || usuario?.empresas?.[0]?.id || empresas[0]?.id || "";
 
   const cargarDatos = useCallback(
     async (queryEmpresa = empresaQuery) => {
@@ -70,18 +98,32 @@ function App() {
       }
 
       const params = { empresa_id: queryEmpresa };
-      const [dashboardRes, alertasRes, ventasRes, inventarioRes] =
+      const [
+        dashboardRes,
+        alertasRes,
+        ventasRes,
+        inventarioRes,
+        clientesRes,
+        cotizacionesRes,
+        ordenesRes,
+      ] =
         await Promise.all([
           axios.get(`${API_URL}/dashboard`, { headers: authHeaders, params }),
           axios.get(`${API_URL}/alertas`, { headers: authHeaders, params }),
           axios.get(`${API_URL}/ventas`, { headers: authHeaders, params }),
           axios.get(`${API_URL}/inventario`, { headers: authHeaders, params }),
+          axios.get(`${API_URL}/clientes`, { headers: authHeaders, params }),
+          axios.get(`${API_URL}/cotizaciones`, { headers: authHeaders, params }),
+          axios.get(`${API_URL}/ordenes-venta`, { headers: authHeaders, params }),
         ]);
 
       setDashboard(dashboardRes.data);
       setAlertas(alertasRes.data.alertas);
       setVentas(ventasRes.data.ventas);
       setInventario(inventarioRes.data.inventario);
+      setClientes(clientesRes.data.clientes);
+      setCotizaciones(cotizacionesRes.data.cotizaciones);
+      setOrdenesVenta(ordenesRes.data.ordenes);
     },
     [authHeaders, empresaQuery, token]
   );
@@ -166,6 +208,9 @@ function App() {
     setDashboard(null);
     setAlertas([]);
     setVentas([]);
+    setClientes([]);
+    setCotizaciones([]);
+    setOrdenesVenta([]);
     setInventario([]);
     setEmpresas([]);
     setUsuarios([]);
@@ -257,6 +302,119 @@ function App() {
       setMensaje("Usuario actualizado correctamente.");
     } catch {
       setError("No se pudo actualizar el usuario.");
+    }
+  }
+
+  function construirLineaDocumento(form) {
+    return [
+      {
+        descripcion: form.descripcion || "Linea de venta",
+        cantidad: Number(form.cantidad || 0),
+        unidad: form.unidad || "unidad",
+        precio_unitario: Number(form.precio_unitario || 0),
+        impuesto_porcentaje: Number(form.impuesto_porcentaje || 0),
+      },
+    ];
+  }
+
+  async function crearCliente(event) {
+    event.preventDefault();
+    setError("");
+    setMensaje("");
+
+    try {
+      await axios.post(
+        `${API_URL}/clientes`,
+        { ...clienteForm, empresa_id: empresaActivaId },
+        { headers: authHeaders }
+      );
+      setClienteForm(emptyCliente);
+      await cargarDatos();
+      setMensaje("Cliente creado correctamente.");
+    } catch {
+      setError("No se pudo crear el cliente.");
+    }
+  }
+
+  async function crearCotizacion(event) {
+    event.preventDefault();
+    setError("");
+    setMensaje("");
+
+    try {
+      await axios.post(
+        `${API_URL}/cotizaciones`,
+        {
+          empresa_id: empresaActivaId,
+          cliente_id: cotizacionForm.cliente_id || null,
+          fecha_vencimiento: cotizacionForm.fecha_vencimiento || null,
+          lineas: construirLineaDocumento(cotizacionForm),
+        },
+        { headers: authHeaders }
+      );
+      setCotizacionForm(emptyDocumentoVenta);
+      await cargarDatos();
+      setMensaje("Cotizacion creada correctamente.");
+    } catch {
+      setError("No se pudo crear la cotizacion.");
+    }
+  }
+
+  async function confirmarCotizacion(cotizacionId) {
+    setError("");
+    setMensaje("");
+
+    try {
+      await axios.post(
+        `${API_URL}/cotizaciones/${cotizacionId}/confirmar`,
+        {},
+        { headers: authHeaders }
+      );
+      await cargarDatos();
+      setMensaje("Cotizacion confirmada como orden de venta.");
+    } catch {
+      setError("No se pudo confirmar la cotizacion.");
+    }
+  }
+
+  async function crearOrdenVenta(event) {
+    event.preventDefault();
+    setError("");
+    setMensaje("");
+
+    try {
+      await axios.post(
+        `${API_URL}/ordenes-venta`,
+        {
+          empresa_id: empresaActivaId,
+          cliente_id: ordenForm.cliente_id || null,
+          orden_despacho: ordenForm.orden_despacho || null,
+          lineas: construirLineaDocumento(ordenForm),
+        },
+        { headers: authHeaders }
+      );
+      setOrdenForm(emptyDocumentoVenta);
+      await cargarDatos();
+      setMensaje("Orden de venta creada correctamente.");
+    } catch {
+      setError("No se pudo crear la orden de venta.");
+    }
+  }
+
+  async function cancelarOrdenVenta(ordenId) {
+    setError("");
+    setMensaje("");
+
+    try {
+      await axios.post(
+        `${API_URL}/ordenes-venta/${ordenId}/cancelar`,
+        {},
+        { headers: authHeaders }
+      );
+      await cargarDatos();
+      setMensaje("Orden de venta cancelada.");
+    } catch {
+      setError("No se pudo cancelar la orden de venta.");
     }
   }
 
@@ -468,7 +626,7 @@ function App() {
             <div className="panel-header">
               <div>
                 <h2>Modulo de ventas</h2>
-                <p>Listado filtrado por las empresas seleccionadas.</p>
+                <p>Cotizaciones, ordenes de venta y clientes.</p>
               </div>
 
               <button
@@ -479,18 +637,180 @@ function App() {
               </button>
             </div>
 
-            <DataTable
-              columns={["Fecha", "Producto", "Canal", "Cantidad", "Precio", "Total"]}
-              rows={ventas}
-              renderRow={(venta) => [
-                new Date(venta.fecha).toLocaleDateString(),
-                venta.producto,
-                venta.canal,
-                venta.cantidad,
-                `Q ${Number(venta.precio_unitario).toFixed(2)}`,
-                `Q ${Number(venta.total).toFixed(2)}`,
-              ]}
-            />
+            <div className="tabs">
+              {["cotizaciones", "ordenes", "clientes", "historico"].map((tab) => (
+                <button
+                  key={tab}
+                  className={tabVentas === tab ? "active" : ""}
+                  onClick={() => setTabVentas(tab)}
+                >
+                  {tab === "ordenes" ? "Ordenes de venta" : tab.charAt(0).toUpperCase() + tab.slice(1)}
+                </button>
+              ))}
+            </div>
+
+            {tabVentas === "cotizaciones" && (
+              <div className="settings-grid">
+                <DocumentoVentaForm
+                  title="Nueva cotizacion"
+                  form={cotizacionForm}
+                  setForm={setCotizacionForm}
+                  clientes={clientes}
+                  empresaActivaId={empresaActivaId}
+                  onSubmit={crearCotizacion}
+                />
+
+                <div>
+                  <h2>Cotizaciones</h2>
+                  <DataTable
+                    columns={["Numero", "Cliente", "Fecha", "Estado", "Total", "Accion"]}
+                    rows={cotizaciones}
+                    renderRow={(cotizacion) => [
+                      cotizacion.numero,
+                      cotizacion.cliente,
+                      new Date(cotizacion.fecha_creacion).toLocaleDateString(),
+                      <span
+                        key={cotizacion.id}
+                        className={`badge ${String(cotizacion.estado).replace("_", "-")}`}
+                      >
+                        {cotizacion.estado}
+                      </span>,
+                      `Q ${Number(cotizacion.total).toFixed(2)}`,
+                      cotizacion.estado === "orden_venta" ? (
+                        "Confirmada"
+                      ) : (
+                        <button
+                          key={`${cotizacion.id}-confirmar`}
+                          className="table-action"
+                          onClick={() => void confirmarCotizacion(cotizacion.id)}
+                        >
+                          Confirmar
+                        </button>
+                      ),
+                    ]}
+                  />
+                </div>
+              </div>
+            )}
+
+            {tabVentas === "ordenes" && (
+              <div className="settings-grid">
+                <DocumentoVentaForm
+                  title="Nueva orden de venta"
+                  form={ordenForm}
+                  setForm={setOrdenForm}
+                  clientes={clientes}
+                  empresaActivaId={empresaActivaId}
+                  onSubmit={crearOrdenVenta}
+                  showOrdenDespacho
+                />
+
+                <div>
+                  <h2>Ordenes de venta</h2>
+                  <DataTable
+                    columns={["Numero", "Cliente", "Fecha", "Estado", "Total", "Accion"]}
+                    rows={ordenesVenta}
+                    renderRow={(orden) => [
+                      orden.numero,
+                      orden.cliente,
+                      new Date(orden.fecha_orden).toLocaleDateString(),
+                      <span key={orden.id} className={`badge ${orden.estado}`}>
+                        {orden.estado}
+                      </span>,
+                      `Q ${Number(orden.total).toFixed(2)}`,
+                      orden.estado === "cancelado" ? (
+                        "Cancelada"
+                      ) : (
+                        <button
+                          key={`${orden.id}-cancelar`}
+                          className="table-action"
+                          onClick={() => void cancelarOrdenVenta(orden.id)}
+                        >
+                          Cancelar
+                        </button>
+                      ),
+                    ]}
+                  />
+                </div>
+              </div>
+            )}
+
+            {tabVentas === "clientes" && (
+              <div className="settings-grid">
+                <form className="admin-form" onSubmit={crearCliente}>
+                  <h2>Nuevo cliente</h2>
+                  <input
+                    value={clienteForm.nombre}
+                    onChange={(event) =>
+                      setClienteForm({ ...clienteForm, nombre: event.target.value })
+                    }
+                    placeholder="Nombre"
+                  />
+                  <input
+                    value={clienteForm.nit}
+                    onChange={(event) =>
+                      setClienteForm({ ...clienteForm, nit: event.target.value })
+                    }
+                    placeholder="NIT"
+                  />
+                  <input
+                    value={clienteForm.telefono}
+                    onChange={(event) =>
+                      setClienteForm({ ...clienteForm, telefono: event.target.value })
+                    }
+                    placeholder="Telefono"
+                  />
+                  <input
+                    value={clienteForm.email}
+                    onChange={(event) =>
+                      setClienteForm({ ...clienteForm, email: event.target.value })
+                    }
+                    placeholder="Email"
+                  />
+                  <input
+                    value={clienteForm.direccion}
+                    onChange={(event) =>
+                      setClienteForm({ ...clienteForm, direccion: event.target.value })
+                    }
+                    placeholder="Direccion"
+                  />
+                  <button type="submit" disabled={!empresaActivaId}>
+                    Crear cliente
+                  </button>
+                </form>
+
+                <div>
+                  <h2>Clientes</h2>
+                  <DataTable
+                    columns={["Nombre", "NIT", "Telefono", "Email", "Empresa", "Estado"]}
+                    rows={clientes}
+                    renderRow={(cliente) => [
+                      cliente.nombre,
+                      cliente.nit || "-",
+                      cliente.telefono || "-",
+                      cliente.email || "-",
+                      cliente.empresa,
+                      cliente.estado,
+                    ]}
+                  />
+                </div>
+              </div>
+            )}
+
+            {tabVentas === "historico" && (
+              <DataTable
+                columns={["Fecha", "Producto", "Canal", "Cantidad", "Precio", "Total"]}
+                rows={ventas}
+                renderRow={(venta) => [
+                  new Date(venta.fecha).toLocaleDateString(),
+                  venta.producto,
+                  venta.canal,
+                  venta.cantidad,
+                  `Q ${Number(venta.precio_unitario).toFixed(2)}`,
+                  `Q ${Number(venta.total).toFixed(2)}`,
+                ]}
+              />
+            )}
           </section>
         )}
 
@@ -748,6 +1068,110 @@ function App() {
         )}
       </section>
     </main>
+  );
+}
+
+function DocumentoVentaForm({
+  title,
+  form,
+  setForm,
+  clientes,
+  empresaActivaId,
+  onSubmit,
+  showOrdenDespacho = false,
+}) {
+  const subtotal = Number(form.cantidad || 0) * Number(form.precio_unitario || 0);
+  const impuestos = subtotal * (Number(form.impuesto_porcentaje || 0) / 100);
+
+  return (
+    <form className="admin-form" onSubmit={onSubmit}>
+      <h2>{title}</h2>
+      <select
+        value={form.cliente_id}
+        onChange={(event) => setForm({ ...form, cliente_id: event.target.value })}
+      >
+        <option value="">Cliente no registrado</option>
+        {clientes.map((cliente) => (
+          <option key={cliente.id} value={cliente.id}>
+            {cliente.nombre}
+          </option>
+        ))}
+      </select>
+
+      <input
+        value={form.descripcion}
+        onChange={(event) => setForm({ ...form, descripcion: event.target.value })}
+        placeholder="Producto o servicio"
+      />
+
+      <div className="form-row">
+        <input
+          type="number"
+          min="0"
+          step="0.01"
+          value={form.cantidad}
+          onChange={(event) => setForm({ ...form, cantidad: event.target.value })}
+          placeholder="Cantidad"
+        />
+        <input
+          value={form.unidad}
+          onChange={(event) => setForm({ ...form, unidad: event.target.value })}
+          placeholder="Unidad"
+        />
+      </div>
+
+      <div className="form-row">
+        <input
+          type="number"
+          min="0"
+          step="0.01"
+          value={form.precio_unitario}
+          onChange={(event) =>
+            setForm({ ...form, precio_unitario: event.target.value })
+          }
+          placeholder="Precio unitario"
+        />
+        <input
+          type="number"
+          min="0"
+          step="0.01"
+          value={form.impuesto_porcentaje}
+          onChange={(event) =>
+            setForm({ ...form, impuesto_porcentaje: event.target.value })
+          }
+          placeholder="IVA %"
+        />
+      </div>
+
+      {!showOrdenDespacho && (
+        <input
+          type="date"
+          value={form.fecha_vencimiento}
+          onChange={(event) =>
+            setForm({ ...form, fecha_vencimiento: event.target.value })
+          }
+        />
+      )}
+
+      {showOrdenDespacho && (
+        <input
+          value={form.orden_despacho}
+          onChange={(event) =>
+            setForm({ ...form, orden_despacho: event.target.value })
+          }
+          placeholder="Orden de despacho"
+        />
+      )}
+
+      <div className="document-total">
+        <span>Subtotal: Q {subtotal.toFixed(2)}</span>
+        <strong>Total: Q {(subtotal + impuestos).toFixed(2)}</strong>
+      </div>
+
+      <button type="submit" disabled={!empresaActivaId}>
+        Guardar
+      </button>
+    </form>
   );
 }
 

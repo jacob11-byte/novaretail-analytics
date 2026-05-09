@@ -118,6 +118,72 @@ function empresaWhere(alias, empresaIds, startIndex) {
   };
 }
 
+async function validarEmpresaPermitida(req, res, empresaId) {
+  if (!empresaId) {
+    res.status(400).json({ error: "empresa_id es requerido" });
+    return false;
+  }
+
+  if (req.user.rol === "admin") {
+    return true;
+  }
+
+  const empresas = await obtenerEmpresasUsuario(req.user.id, req.user.rol);
+  const permitida = empresas.some((empresa) => empresa.id === empresaId);
+
+  if (!permitida) {
+    res.status(403).json({ error: "Empresa no permitida para el usuario" });
+    return false;
+  }
+
+  return true;
+}
+
+function calcularLineas(lineas = []) {
+  const detalle = lineas.map((linea) => {
+    const cantidad = Number(linea.cantidad || 0);
+    const precioUnitario = Number(linea.precio_unitario || 0);
+    const impuestoPorcentaje = Number(linea.impuesto_porcentaje ?? 12);
+    const subtotal = Number((cantidad * precioUnitario).toFixed(2));
+    const impuesto = Number(((subtotal * impuestoPorcentaje) / 100).toFixed(2));
+
+    return {
+      producto_id: linea.producto_id || null,
+      descripcion: linea.descripcion || "",
+      cantidad,
+      unidad: linea.unidad || "unidad",
+      precio_unitario: precioUnitario,
+      impuesto_porcentaje: impuestoPorcentaje,
+      subtotal,
+      impuesto,
+    };
+  });
+
+  const subtotal = Number(
+    detalle.reduce((total, linea) => total + linea.subtotal, 0).toFixed(2)
+  );
+  const impuestos = Number(
+    detalle.reduce((total, linea) => total + linea.impuesto, 0).toFixed(2)
+  );
+
+  return {
+    detalle,
+    subtotal,
+    impuestos,
+    total: Number((subtotal + impuestos).toFixed(2)),
+  };
+}
+
+async function generarNumeroDocumento(tabla, prefijo, empresaId) {
+  const result = await db.query(
+    `select count(*)::int as total from ${tabla} where empresa_id = $1`,
+    [empresaId]
+  );
+  const siguiente = Number(result.rows[0].total) + 1;
+
+  return `${prefijo}-${String(siguiente).padStart(5, "0")}`;
+}
+
 async function registrarAuditoria(usuarioId, accion, detalle, empresaId = null) {
   try {
     await db.query(
@@ -574,6 +640,747 @@ api.get("/roles", authMiddleware(ADMIN_ROLES), (req, res) => {
     })),
   });
 });
+
+api.get("/clientes", authMiddleware(MANAGEMENT_ROLES), async (req, res) => {
+  try {
+    const empresaIds = await resolverEmpresasPermitidas(req, res);
+
+    if (!empresaIds) {
+      return;
+    }
+
+    const filtroEmpresa = empresaWhere("c", empresaIds, 1);
+    const result = await db.query(
+      `
+      select c.id, c.empresa_id, e.nombre as empresa, c.nombre, c.nit,
+        c.telefono, c.email, c.direccion, c.estado, c.created_at, c.updated_at
+      from clientes c
+      join empresas e on e.id = c.empresa_id
+      where true
+      ${filtroEmpresa.clause}
+      order by c.created_at desc
+      `,
+      [...filtroEmpresa.params]
+    );
+
+    res.json({ total: result.rows.length, clientes: result.rows });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Error al obtener clientes" });
+  }
+});
+
+api.post("/clientes", authMiddleware(MANAGEMENT_ROLES), async (req, res) => {
+  try {
+    const {
+      empresa_id,
+      nombre,
+      nit,
+      telefono,
+      email,
+      direccion,
+      estado = "activo",
+    } = req.body;
+
+    if (!(await validarEmpresaPermitida(req, res, empresa_id))) {
+      return;
+    }
+
+    if (!nombre) {
+      return res.status(400).json({ error: "El nombre del cliente es requerido" });
+    }
+
+    const result = await db.query(
+      `
+      insert into clientes (empresa_id, nombre, nit, telefono, email, direccion, estado)
+      values ($1, $2, $3, $4, $5, $6, $7)
+      returning id, empresa_id, nombre, nit, telefono, email, direccion, estado, created_at
+      `,
+      [empresa_id, nombre, nit, telefono, email, direccion, estado]
+    );
+
+    await registrarAuditoria(
+      req.user.id,
+      "CLIENTE_CREADO",
+      `Cliente creado: ${nombre}`,
+      empresa_id
+    );
+
+    res.status(201).json({ cliente: result.rows[0] });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Error al crear cliente" });
+  }
+});
+
+api.put("/clientes/:id", authMiddleware(MANAGEMENT_ROLES), async (req, res) => {
+  try {
+    const actual = await db.query("select empresa_id from clientes where id=$1", [
+      req.params.id,
+    ]);
+
+    if (actual.rows.length === 0) {
+      return res.status(404).json({ error: "Cliente no encontrado" });
+    }
+
+    if (!(await validarEmpresaPermitida(req, res, actual.rows[0].empresa_id))) {
+      return;
+    }
+
+    const { nombre, nit, telefono, email, direccion, estado } = req.body;
+    const result = await db.query(
+      `
+      update clientes
+      set nombre = coalesce($1, nombre),
+          nit = $2,
+          telefono = $3,
+          email = $4,
+          direccion = $5,
+          estado = coalesce($6, estado),
+          updated_at = now()
+      where id = $7
+      returning id, empresa_id, nombre, nit, telefono, email, direccion, estado, updated_at
+      `,
+      [nombre, nit, telefono, email, direccion, estado, req.params.id]
+    );
+
+    await registrarAuditoria(
+      req.user.id,
+      "CLIENTE_ACTUALIZADO",
+      `Cliente actualizado: ${result.rows[0].nombre}`,
+      result.rows[0].empresa_id
+    );
+
+    res.json({ cliente: result.rows[0] });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Error al actualizar cliente" });
+  }
+});
+
+api.get("/cotizaciones", authMiddleware(MANAGEMENT_ROLES), async (req, res) => {
+  try {
+    const empresaIds = await resolverEmpresasPermitidas(req, res);
+
+    if (!empresaIds) {
+      return;
+    }
+
+    const filtroEmpresa = empresaWhere("c", empresaIds, 1);
+    const result = await db.query(
+      `
+      select c.id, c.empresa_id, e.nombre as empresa, c.numero, c.cliente_id,
+        coalesce(cl.nombre, 'Cliente no registrado') as cliente,
+        c.fecha_creacion, c.fecha_vencimiento, c.estado, c.subtotal,
+        c.impuestos, c.total, c.created_at
+      from cotizaciones c
+      join empresas e on e.id = c.empresa_id
+      left join clientes cl on cl.id = c.cliente_id
+      where true
+      ${filtroEmpresa.clause}
+      order by c.created_at desc
+      `,
+      [...filtroEmpresa.params]
+    );
+
+    res.json({ total: result.rows.length, cotizaciones: result.rows });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Error al obtener cotizaciones" });
+  }
+});
+
+api.post("/cotizaciones", authMiddleware(MANAGEMENT_ROLES), async (req, res) => {
+  const client = await db.connect();
+
+  try {
+    const {
+      empresa_id,
+      numero,
+      cliente_id,
+      fecha_creacion,
+      fecha_vencimiento,
+      lista_precios,
+      terminos_pago,
+      estado = "cotizacion",
+      lineas = [],
+    } = req.body;
+
+    if (!(await validarEmpresaPermitida(req, res, empresa_id))) {
+      return;
+    }
+
+    const calculo = calcularLineas(lineas);
+    const numeroDocumento =
+      numero || (await generarNumeroDocumento("cotizaciones", "COT", empresa_id));
+
+    await client.query("begin");
+    const cotizacion = await client.query(
+      `
+      insert into cotizaciones (
+        empresa_id, numero, cliente_id, vendedor_id, fecha_creacion,
+        fecha_vencimiento, lista_precios, terminos_pago, estado,
+        subtotal, impuestos, total
+      )
+      values ($1, $2, $3, $4, coalesce($5, current_date), $6, $7, $8, $9, $10, $11, $12)
+      returning *
+      `,
+      [
+        empresa_id,
+        numeroDocumento,
+        cliente_id || null,
+        String(req.user.id),
+        fecha_creacion || null,
+        fecha_vencimiento || null,
+        lista_precios || null,
+        terminos_pago || null,
+        estado,
+        calculo.subtotal,
+        calculo.impuestos,
+        calculo.total,
+      ]
+    );
+
+    for (const linea of calculo.detalle) {
+      await client.query(
+        `
+        insert into cotizacion_detalle (
+          cotizacion_id, producto_id, descripcion, cantidad, unidad,
+          precio_unitario, impuesto_porcentaje, subtotal
+        )
+        values ($1, $2, $3, $4, $5, $6, $7, $8)
+        `,
+        [
+          cotizacion.rows[0].id,
+          linea.producto_id,
+          linea.descripcion,
+          linea.cantidad,
+          linea.unidad,
+          linea.precio_unitario,
+          linea.impuesto_porcentaje,
+          linea.subtotal,
+        ]
+      );
+    }
+
+    await client.query("commit");
+    await registrarAuditoria(
+      req.user.id,
+      "COTIZACION_CREADA",
+      `Cotizacion creada: ${numeroDocumento}`,
+      empresa_id
+    );
+
+    res.status(201).json({ cotizacion: cotizacion.rows[0] });
+  } catch (error) {
+    await client.query("rollback");
+    console.error(error);
+    res.status(500).json({ error: "Error al crear cotizacion" });
+  } finally {
+    client.release();
+  }
+});
+
+api.get("/cotizaciones/:id", authMiddleware(MANAGEMENT_ROLES), async (req, res) => {
+  try {
+    const cotizacion = await db.query(
+      `
+      select c.*, coalesce(cl.nombre, 'Cliente no registrado') as cliente
+      from cotizaciones c
+      left join clientes cl on cl.id = c.cliente_id
+      where c.id = $1
+      `,
+      [req.params.id]
+    );
+
+    if (cotizacion.rows.length === 0) {
+      return res.status(404).json({ error: "Cotizacion no encontrada" });
+    }
+
+    if (!(await validarEmpresaPermitida(req, res, cotizacion.rows[0].empresa_id))) {
+      return;
+    }
+
+    const detalle = await db.query(
+      "select * from cotizacion_detalle where cotizacion_id=$1 order by id asc",
+      [req.params.id]
+    );
+
+    res.json({ cotizacion: { ...cotizacion.rows[0], lineas: detalle.rows } });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Error al obtener cotizacion" });
+  }
+});
+
+api.put("/cotizaciones/:id", authMiddleware(MANAGEMENT_ROLES), async (req, res) => {
+  const client = await db.connect();
+
+  try {
+    const actual = await db.query("select * from cotizaciones where id=$1", [
+      req.params.id,
+    ]);
+
+    if (actual.rows.length === 0) {
+      return res.status(404).json({ error: "Cotizacion no encontrada" });
+    }
+
+    if (!(await validarEmpresaPermitida(req, res, actual.rows[0].empresa_id))) {
+      return;
+    }
+
+    const {
+      cliente_id,
+      fecha_creacion,
+      fecha_vencimiento,
+      lista_precios,
+      terminos_pago,
+      estado,
+      lineas,
+    } = req.body;
+    const calculo = Array.isArray(lineas) ? calcularLineas(lineas) : null;
+
+    await client.query("begin");
+    const cotizacion = await client.query(
+      `
+      update cotizaciones
+      set cliente_id = coalesce($1, cliente_id),
+          fecha_creacion = coalesce($2, fecha_creacion),
+          fecha_vencimiento = $3,
+          lista_precios = $4,
+          terminos_pago = $5,
+          estado = coalesce($6, estado),
+          subtotal = coalesce($7, subtotal),
+          impuestos = coalesce($8, impuestos),
+          total = coalesce($9, total),
+          updated_at = now()
+      where id = $10
+      returning *
+      `,
+      [
+        cliente_id || null,
+        fecha_creacion || null,
+        fecha_vencimiento || null,
+        lista_precios || null,
+        terminos_pago || null,
+        estado || null,
+        calculo?.subtotal ?? null,
+        calculo?.impuestos ?? null,
+        calculo?.total ?? null,
+        req.params.id,
+      ]
+    );
+
+    if (calculo) {
+      await client.query("delete from cotizacion_detalle where cotizacion_id=$1", [
+        req.params.id,
+      ]);
+
+      for (const linea of calculo.detalle) {
+        await client.query(
+          `
+          insert into cotizacion_detalle (
+            cotizacion_id, producto_id, descripcion, cantidad, unidad,
+            precio_unitario, impuesto_porcentaje, subtotal
+          )
+          values ($1, $2, $3, $4, $5, $6, $7, $8)
+          `,
+          [
+            req.params.id,
+            linea.producto_id,
+            linea.descripcion,
+            linea.cantidad,
+            linea.unidad,
+            linea.precio_unitario,
+            linea.impuesto_porcentaje,
+            linea.subtotal,
+          ]
+        );
+      }
+    }
+
+    await client.query("commit");
+    res.json({ cotizacion: cotizacion.rows[0] });
+  } catch (error) {
+    await client.query("rollback");
+    console.error(error);
+    res.status(500).json({ error: "Error al actualizar cotizacion" });
+  } finally {
+    client.release();
+  }
+});
+
+api.post(
+  "/cotizaciones/:id/confirmar",
+  authMiddleware(MANAGEMENT_ROLES),
+  async (req, res) => {
+    const client = await db.connect();
+
+    try {
+      const cotizacion = await db.query("select * from cotizaciones where id=$1", [
+        req.params.id,
+      ]);
+
+      if (cotizacion.rows.length === 0) {
+        return res.status(404).json({ error: "Cotizacion no encontrada" });
+      }
+
+      const cotizacionActual = cotizacion.rows[0];
+
+      if (!(await validarEmpresaPermitida(req, res, cotizacionActual.empresa_id))) {
+        return;
+      }
+
+      const detalle = await db.query(
+        "select * from cotizacion_detalle where cotizacion_id=$1 order by id asc",
+        [req.params.id]
+      );
+      const numeroOrden = await generarNumeroDocumento(
+        "ordenes_venta",
+        "OV",
+        cotizacionActual.empresa_id
+      );
+
+      await client.query("begin");
+      const orden = await client.query(
+        `
+        insert into ordenes_venta (
+          empresa_id, numero, cotizacion_id, cliente_id, vendedor_id,
+          fecha_orden, estado, subtotal, impuestos, total, orden_despacho
+        )
+        values ($1, $2, $3, $4, $5, current_date, 'orden_venta', $6, $7, $8, $9)
+        returning *
+        `,
+        [
+          cotizacionActual.empresa_id,
+          numeroOrden,
+          cotizacionActual.id,
+          cotizacionActual.cliente_id,
+          cotizacionActual.vendedor_id,
+          cotizacionActual.subtotal,
+          cotizacionActual.impuestos,
+          cotizacionActual.total,
+          req.body.orden_despacho || null,
+        ]
+      );
+
+      for (const linea of detalle.rows) {
+        await client.query(
+          `
+          insert into orden_venta_detalle (
+            orden_venta_id, producto_id, descripcion, cantidad, unidad,
+            precio_unitario, impuesto_porcentaje, subtotal
+          )
+          values ($1, $2, $3, $4, $5, $6, $7, $8)
+          `,
+          [
+            orden.rows[0].id,
+            linea.producto_id,
+            linea.descripcion,
+            linea.cantidad,
+            linea.unidad,
+            linea.precio_unitario,
+            linea.impuesto_porcentaje,
+            linea.subtotal,
+          ]
+        );
+      }
+
+      await client.query(
+        "update cotizaciones set estado='orden_venta', updated_at=now() where id=$1",
+        [req.params.id]
+      );
+      await client.query("commit");
+
+      await registrarAuditoria(
+        req.user.id,
+        "COTIZACION_CONFIRMADA",
+        `Cotizacion confirmada: ${cotizacionActual.numero}`,
+        cotizacionActual.empresa_id
+      );
+
+      res.status(201).json({ orden: orden.rows[0] });
+    } catch (error) {
+      await client.query("rollback");
+      console.error(error);
+      res.status(500).json({ error: "Error al confirmar cotizacion" });
+    } finally {
+      client.release();
+    }
+  }
+);
+
+api.get("/ordenes-venta", authMiddleware(MANAGEMENT_ROLES), async (req, res) => {
+  try {
+    const empresaIds = await resolverEmpresasPermitidas(req, res);
+
+    if (!empresaIds) {
+      return;
+    }
+
+    const filtroEmpresa = empresaWhere("o", empresaIds, 1);
+    const result = await db.query(
+      `
+      select o.id, o.empresa_id, e.nombre as empresa, o.numero, o.cotizacion_id,
+        o.cliente_id, coalesce(cl.nombre, 'Cliente no registrado') as cliente,
+        o.fecha_orden, o.estado, o.subtotal, o.impuestos, o.total,
+        o.orden_despacho, o.created_at
+      from ordenes_venta o
+      join empresas e on e.id = o.empresa_id
+      left join clientes cl on cl.id = o.cliente_id
+      where true
+      ${filtroEmpresa.clause}
+      order by o.created_at desc
+      `,
+      [...filtroEmpresa.params]
+    );
+
+    res.json({ total: result.rows.length, ordenes: result.rows });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Error al obtener ordenes de venta" });
+  }
+});
+
+api.post("/ordenes-venta", authMiddleware(MANAGEMENT_ROLES), async (req, res) => {
+  const client = await db.connect();
+
+  try {
+    const {
+      empresa_id,
+      numero,
+      cliente_id,
+      fecha_orden,
+      estado = "orden_venta",
+      orden_despacho,
+      lineas = [],
+    } = req.body;
+
+    if (!(await validarEmpresaPermitida(req, res, empresa_id))) {
+      return;
+    }
+
+    const calculo = calcularLineas(lineas);
+    const numeroDocumento =
+      numero || (await generarNumeroDocumento("ordenes_venta", "OV", empresa_id));
+
+    await client.query("begin");
+    const orden = await client.query(
+      `
+      insert into ordenes_venta (
+        empresa_id, numero, cliente_id, vendedor_id, fecha_orden, estado,
+        subtotal, impuestos, total, orden_despacho
+      )
+      values ($1, $2, $3, $4, coalesce($5, current_date), $6, $7, $8, $9, $10)
+      returning *
+      `,
+      [
+        empresa_id,
+        numeroDocumento,
+        cliente_id || null,
+        String(req.user.id),
+        fecha_orden || null,
+        estado,
+        calculo.subtotal,
+        calculo.impuestos,
+        calculo.total,
+        orden_despacho || null,
+      ]
+    );
+
+    for (const linea of calculo.detalle) {
+      await client.query(
+        `
+        insert into orden_venta_detalle (
+          orden_venta_id, producto_id, descripcion, cantidad, unidad,
+          precio_unitario, impuesto_porcentaje, subtotal
+        )
+        values ($1, $2, $3, $4, $5, $6, $7, $8)
+        `,
+        [
+          orden.rows[0].id,
+          linea.producto_id,
+          linea.descripcion,
+          linea.cantidad,
+          linea.unidad,
+          linea.precio_unitario,
+          linea.impuesto_porcentaje,
+          linea.subtotal,
+        ]
+      );
+    }
+
+    await client.query("commit");
+    await registrarAuditoria(
+      req.user.id,
+      "ORDEN_VENTA_CREADA",
+      `Orden de venta creada: ${numeroDocumento}`,
+      empresa_id
+    );
+
+    res.status(201).json({ orden: orden.rows[0] });
+  } catch (error) {
+    await client.query("rollback");
+    console.error(error);
+    res.status(500).json({ error: "Error al crear orden de venta" });
+  } finally {
+    client.release();
+  }
+});
+
+api.get("/ordenes-venta/:id", authMiddleware(MANAGEMENT_ROLES), async (req, res) => {
+  try {
+    const orden = await db.query(
+      `
+      select o.*, coalesce(cl.nombre, 'Cliente no registrado') as cliente
+      from ordenes_venta o
+      left join clientes cl on cl.id = o.cliente_id
+      where o.id = $1
+      `,
+      [req.params.id]
+    );
+
+    if (orden.rows.length === 0) {
+      return res.status(404).json({ error: "Orden de venta no encontrada" });
+    }
+
+    if (!(await validarEmpresaPermitida(req, res, orden.rows[0].empresa_id))) {
+      return;
+    }
+
+    const detalle = await db.query(
+      "select * from orden_venta_detalle where orden_venta_id=$1 order by id asc",
+      [req.params.id]
+    );
+
+    res.json({ orden: { ...orden.rows[0], lineas: detalle.rows } });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Error al obtener orden de venta" });
+  }
+});
+
+api.put("/ordenes-venta/:id", authMiddleware(MANAGEMENT_ROLES), async (req, res) => {
+  const client = await db.connect();
+
+  try {
+    const actual = await db.query("select * from ordenes_venta where id=$1", [
+      req.params.id,
+    ]);
+
+    if (actual.rows.length === 0) {
+      return res.status(404).json({ error: "Orden de venta no encontrada" });
+    }
+
+    if (!(await validarEmpresaPermitida(req, res, actual.rows[0].empresa_id))) {
+      return;
+    }
+
+    const { cliente_id, fecha_orden, estado, orden_despacho, lineas } = req.body;
+    const calculo = Array.isArray(lineas) ? calcularLineas(lineas) : null;
+
+    await client.query("begin");
+    const orden = await client.query(
+      `
+      update ordenes_venta
+      set cliente_id = coalesce($1, cliente_id),
+          fecha_orden = coalesce($2, fecha_orden),
+          estado = coalesce($3, estado),
+          orden_despacho = $4,
+          subtotal = coalesce($5, subtotal),
+          impuestos = coalesce($6, impuestos),
+          total = coalesce($7, total),
+          updated_at = now()
+      where id = $8
+      returning *
+      `,
+      [
+        cliente_id || null,
+        fecha_orden || null,
+        estado || null,
+        orden_despacho || null,
+        calculo?.subtotal ?? null,
+        calculo?.impuestos ?? null,
+        calculo?.total ?? null,
+        req.params.id,
+      ]
+    );
+
+    if (calculo) {
+      await client.query("delete from orden_venta_detalle where orden_venta_id=$1", [
+        req.params.id,
+      ]);
+
+      for (const linea of calculo.detalle) {
+        await client.query(
+          `
+          insert into orden_venta_detalle (
+            orden_venta_id, producto_id, descripcion, cantidad, unidad,
+            precio_unitario, impuesto_porcentaje, subtotal
+          )
+          values ($1, $2, $3, $4, $5, $6, $7, $8)
+          `,
+          [
+            req.params.id,
+            linea.producto_id,
+            linea.descripcion,
+            linea.cantidad,
+            linea.unidad,
+            linea.precio_unitario,
+            linea.impuesto_porcentaje,
+            linea.subtotal,
+          ]
+        );
+      }
+    }
+
+    await client.query("commit");
+    res.json({ orden: orden.rows[0] });
+  } catch (error) {
+    await client.query("rollback");
+    console.error(error);
+    res.status(500).json({ error: "Error al actualizar orden de venta" });
+  } finally {
+    client.release();
+  }
+});
+
+api.post(
+  "/ordenes-venta/:id/cancelar",
+  authMiddleware(MANAGEMENT_ROLES),
+  async (req, res) => {
+    try {
+      const actual = await db.query("select * from ordenes_venta where id=$1", [
+        req.params.id,
+      ]);
+
+      if (actual.rows.length === 0) {
+        return res.status(404).json({ error: "Orden de venta no encontrada" });
+      }
+
+      if (!(await validarEmpresaPermitida(req, res, actual.rows[0].empresa_id))) {
+        return;
+      }
+
+      const result = await db.query(
+        "update ordenes_venta set estado='cancelado', updated_at=now() where id=$1 returning *",
+        [req.params.id]
+      );
+
+      await registrarAuditoria(
+        req.user.id,
+        "ORDEN_VENTA_CANCELADA",
+        `Orden de venta cancelada: ${result.rows[0].numero}`,
+        result.rows[0].empresa_id
+      );
+
+      res.json({ orden: result.rows[0] });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: "Error al cancelar orden de venta" });
+    }
+  }
+);
 
 api.get("/dashboard", authMiddleware(MANAGEMENT_ROLES), async (req, res) => {
   try {
