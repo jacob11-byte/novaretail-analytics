@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import axios from "axios";
+import {
+  BarChart, Bar, LineChart, Line,
+  XAxis, YAxis, Tooltip, ResponsiveContainer,
+  Legend, CartesianGrid,
+} from "recharts";
 import "./App.css";
 
 const API_URL = import.meta.env.VITE_API_URL;
@@ -1365,6 +1370,12 @@ function App() {
             </section>
 
             <AlertasPanel alertas={alertas} />
+
+            <AnalisisVisual
+              dashboard={dashboard}
+              inventario={inventario}
+              alertas={alertas}
+            />
           </>
         )}
 
@@ -3156,6 +3167,145 @@ function DataTable({ columns, rows, renderRow }) {
         </tbody>
       </table>
     </div>
+  );
+}
+
+function AnalisisVisual({ dashboard, inventario, alertas }) {
+  const ventasPorCanal = (dashboard?.comparativa_canales ?? []).map((item) => ({
+    canal: item.canal || "Sin canal",
+    total: Number(item.total),
+  }));
+
+  const topProductos = (dashboard?.top_productos ?? []).map((item) => ({
+    producto: item.cod_producto,
+    total_vendido: Number(item.total_vendido),
+  }));
+
+  const ventasPorFecha = (dashboard?.ventas_por_fecha ?? []).map((item) => ({
+    fecha: new Date(item.fecha).toLocaleDateString("es-GT", {
+      month: "short",
+      day: "numeric",
+    }),
+    total: Number(item.total),
+  }));
+
+  const stockComparativo = (inventario ?? []).slice(0, 10).map((item) => ({
+    producto: item.nombre || item.cod_producto,
+    stock_fisico: Number(item.stock_fisico),
+    stock_reportado: Number(item.stock_reportado),
+  }));
+
+  const noData = <p className="chart-no-data">No hay datos disponibles para graficar</p>;
+
+  return (
+    <section className="analisis-visual">
+      <h2 className="analisis-title">Analisis visual</h2>
+
+      <div className="charts-grid">
+        <div className="chart-card">
+          <h3>Ventas por canal</h3>
+          {ventasPorCanal.length === 0 ? noData : (
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={ventasPorCanal} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="canal" tick={{ fontSize: 12 }} />
+                <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => `Q${v.toFixed(0)}`} />
+                <Tooltip formatter={(v) => [`Q ${Number(v).toFixed(2)}`, "Total"]} />
+                <Bar dataKey="total" fill="#6366f1" radius={[4, 4, 0, 0]} name="Total" />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+
+        <div className="chart-card">
+          <h3>Top productos</h3>
+          {topProductos.length === 0 ? noData : (
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={topProductos} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="producto" tick={{ fontSize: 11 }} />
+                <YAxis tick={{ fontSize: 12 }} />
+                <Tooltip formatter={(v) => [v, "Unidades vendidas"]} />
+                <Bar dataKey="total_vendido" fill="#10b981" radius={[4, 4, 0, 0]} name="Unidades" />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+
+        <div className="chart-card chart-card--wide">
+          <h3>Ventas por fecha</h3>
+          {ventasPorFecha.length === 0 ? noData : (
+            <ResponsiveContainer width="100%" height={220}>
+              <LineChart data={ventasPorFecha} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="fecha" tick={{ fontSize: 11 }} />
+                <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => `Q${v.toFixed(0)}`} />
+                <Tooltip formatter={(v) => [`Q ${Number(v).toFixed(2)}`, "Total"]} />
+                <Legend />
+                <Line
+                  type="monotone"
+                  dataKey="total"
+                  stroke="#6366f1"
+                  strokeWidth={2}
+                  dot={false}
+                  name="Total"
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+
+        <div className="chart-card chart-card--wide">
+          <h3>Stock fisico vs stock reportado</h3>
+          {stockComparativo.length === 0 ? noData : (
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={stockComparativo} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="producto" tick={{ fontSize: 11 }} />
+                <YAxis tick={{ fontSize: 12 }} />
+                <Tooltip />
+                <Legend />
+                <Bar dataKey="stock_fisico" fill="#6366f1" radius={[4, 4, 0, 0]} name="Stock fisico" />
+                <Bar dataKey="stock_reportado" fill="#10b981" radius={[4, 4, 0, 0]} name="Stock reportado" />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+      </div>
+
+      <div className="chart-card">
+        <h3>Inventario critico</h3>
+        {alertas.length === 0 ? noData : (
+          <div className="inventario-critico-grid">
+            {alertas.map((alerta) => (
+              <div
+                key={alerta.id}
+                className={`critico-card critico-card--${alerta.severidad.toLowerCase()}`}
+              >
+                <div className="critico-card__header">
+                  <span className="critico-card__nombre">
+                    {alerta.nombre || alerta.cod_producto}
+                  </span>
+                  <span className={`badge ${alerta.severidad.toLowerCase()}`}>
+                    {alerta.severidad}
+                  </span>
+                </div>
+                <div className="critico-card__stats">
+                  <div>
+                    <span className="critico-label">Stock actual</span>
+                    <strong>{alerta.stock_actual}</strong>
+                  </div>
+                  <div>
+                    <span className="critico-label">Stock minimo</span>
+                    <strong>{alerta.stock_minimo}</strong>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </section>
   );
 }
 

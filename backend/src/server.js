@@ -3597,6 +3597,20 @@ api.get("/dashboard", authMiddleware(MANAGEMENT_ROLES), async (req, res) => {
       [fechaInicio, fechaFin, ...productosEmpresa.params]
     );
 
+    const ventasFechaEmpresa = empresaWhere("v", empresaIds, 3);
+    const ventasPorFecha = await db.query(
+      `
+      select v.fecha::date as fecha,
+        coalesce(sum(v.cantidad * v.precio_unitario), 0) as total
+      from ventas v
+      where v.fecha between $1 and $2
+      ${ventasFechaEmpresa.clause}
+      group by v.fecha::date
+      order by v.fecha::date asc
+      `,
+      [fechaInicio, fechaFin, ...ventasFechaEmpresa.params]
+    );
+
     const alertas = await db.query(
       `
       select count(*) as total
@@ -3697,6 +3711,7 @@ api.get("/dashboard", authMiddleware(MANAGEMENT_ROLES), async (req, res) => {
       ventas_mes: Number(ventasMes.rows[0].total),
       comparativa_canales: canales.rows,
       top_productos: topProductos.rows,
+      ventas_por_fecha: ventasPorFecha.rows,
       alertas_count: Number(alertas.rows[0].total),
       compras_mes: Number(comprasMes.rows[0].total),
       ordenes_pendientes: Number(ordenesPendientes.rows[0].total),

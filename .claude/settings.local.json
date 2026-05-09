@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e \"const fs=require\\('fs'\\); const s=fs.readFileSync\\('backend/src/server.js','utf8'\\); const lines=s.split\\('\\\\n'\\); lines.forEach\\(\\(l,i\\)=>{ if\\(l.includes\\('dashboard'\\) || l.includes\\('Dashboard'\\) || l.includes\\('/api/v1/dashboard'\\) || l.includes\\('ventas_por_canal'\\) || l.includes\\('top_productos'\\) || l.includes\\('stock_fisico'\\) || l.includes\\('inventario_critico'\\)\\) console.log\\(i+1, l\\); }\\);\")",
+      "Bash(node -e \"const fs=require\\('fs'\\); const s=fs.readFileSync\\('backend/src/server.js','utf8'\\); const lines=s.split\\('\\\\n'\\); lines.forEach\\(\\(l,i\\)=>{ if\\(l.includes\\('api.get'\\) || l.includes\\('api.post'\\) || l.includes\\('api.put'\\) || l.includes\\('api.delete'\\)\\) console.log\\(i+1, l.trim\\(\\)\\); }\\);\")",
+      "Bash(node -e \"const fs=require\\('fs'\\); const s=fs.readFileSync\\('frontend/src/App.jsx','utf8'\\); const lines=s.split\\('\\\\n'\\); lines.forEach\\(\\(l,i\\)=>{ if\\(l.includes\\('dashboard'\\) || l.includes\\('Dashboard'\\) || l.includes\\('fetchDashboard'\\) || l.includes\\('dashboardData'\\) || l.includes\\('comparativa'\\) || l.includes\\('top_producto'\\) || l.includes\\('Analisis'\\) || l.includes\\('chart'\\) || l.includes\\('Chart'\\) || l.includes\\('recharts'\\)\\) console.log\\(i+1, l\\); }\\);\")",
+      "Bash(node -e \"const fs=require\\('fs'\\); const s=fs.readFileSync\\('frontend/src/App.jsx','utf8'\\); const lines=s.split\\('\\\\n'\\); lines.slice\\(1160, 1420\\).forEach\\(\\(l,i\\)=>console.log\\(i+1161, l\\)\\);\")",
+      "Bash(node -e \"const fs=require\\('fs'\\); const s=fs.readFileSync\\('frontend/src/App.jsx','utf8'\\); const lines=s.split\\('\\\\n'\\); lines.slice\\(100, 420\\).forEach\\(\\(l,i\\)=>console.log\\(i+101, l\\)\\);\")",
+      "Bash(node -e \"const fs=require\\('fs'\\); const s=fs.readFileSync\\('backend/src/server.js','utf8'\\); const lines=s.split\\('\\\\n'\\); lines.slice\\(3835, 3845\\).forEach\\(\\(l,i\\)=>console.log\\(i+3836, l\\)\\);\")",
+      "Bash(npm install *)",
+      "Bash(node -e \"const fs=require\\('fs'\\); const s=fs.readFileSync\\('frontend/src/App.jsx','utf8'\\); console.log\\('Total lines:', s.split\\('\\\\n'\\).length\\);\")",
+      "Bash(node -e \"const fs=require\\('fs'\\); const s=fs.readFileSync\\('frontend/src/App.jsx','utf8'\\); const lines=s.split\\('\\\\n'\\); lines.forEach\\(\\(l,i\\)=>{ if\\(l.includes\\('AlertasPanel'\\) || l.includes\\('function AlertasPanel'\\) || l.includes\\('function DataTable'\\) || l.includes\\('export default'\\)\\) console.log\\(i+1, l\\); }\\);\")",
+      "Bash(node -e \"const fs=require\\('fs'\\); const s=fs.readFileSync\\('frontend/src/App.css','utf8'\\); console.log\\('CSS lines:', s.split\\('\\\\n'\\).length\\); console.log\\('Last 50 lines:'\\); s.split\\('\\\\n'\\).slice\\(-50\\).forEach\\(\\(l,i\\)=>console.log\\(s.split\\('\\\\n'\\).length-50+i+1, l\\)\\);\")",
+      "Bash(node -e \"const fs=require\\('fs'\\); const s=fs.readFileSync\\('frontend/src/App.css','utf8'\\); const lines=s.split\\('\\\\n'\\); lines.forEach\\(\\(l,i\\)=>{ if\\(l.includes\\('.badge'\\) || l.includes\\('critica'\\) || l.includes\\('CRITICA'\\) || l.includes\\('.panel'\\) || l.includes\\('.metric-card'\\) || l.includes\\('.cards-grid'\\) || l.includes\\('.main-grid'\\)\\) console.log\\(i+1, l\\); }\\);\")",
+      "Bash(npm run *)",
+      "Bash(node -e \"const fs=require\\('fs'\\); const s=fs.readFileSync\\('frontend/src/App.jsx','utf8'\\); const lines=s.split\\('\\\\n'\\); lines.forEach\\(\\(l,i\\)=>{ if\\(l.includes\\('recharts'\\) || l.includes\\('AnalisisVisual'\\) || l.includes\\('analisis-visual'\\) || l.includes\\('ventas_por_fecha'\\)\\) console.log\\(i+1, l.trim\\(\\)\\); }\\);\")",
+      "Bash(node -e \"const fs=require\\('fs'\\); const s=fs.readFileSync\\('backend/src/server.js','utf8'\\); const lines=s.split\\('\\\\n'\\); lines.forEach\\(\\(l,i\\)=>{ if\\(l.includes\\('ventas_por_fecha'\\) || l.includes\\('ventasPorFecha'\\) || l.includes\\('ventasFechaEmpresa'\\)\\) console.log\\(i+1, l.trim\\(\\)\\); }\\);\")"
+    ]
+  }
+}
