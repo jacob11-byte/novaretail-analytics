@@ -1256,38 +1256,32 @@ function App() {
 
   if (!token) {
     return (
-      <main className="login-page">
-        <section className="login-card">
-          <div className="brand">
-            <span className="brand-icon">NR</span>
-            <div>
-              <h1>NovaRetail Analytics</h1>
-              <p>Panel empresarial para ventas e inventario</p>
+      <div className="login-page">
+        <header className="login-shell">
+          <div className="login-shell__icon">NR</div>
+          NovaRetail ERP
+        </header>
+        <div className="login-body">
+          <div className="login-card">
+            <div className="login-card__header">
+              <h1>Iniciar sesion</h1>
+              <p>Accede al panel de gestion empresarial</p>
             </div>
+            <form onSubmit={login}>
+              <div className="form-field">
+                <label>Correo electronico</label>
+                <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="admin@novaretail.com" type="email" />
+              </div>
+              <div className="form-field">
+                <label>Contrasena</label>
+                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Contrasena" />
+              </div>
+              {error && <p className="error">{error}</p>}
+              <button type="submit" className="btn-primary">Iniciar sesion</button>
+            </form>
           </div>
-
-          <form onSubmit={login}>
-            <label>Correo electronico</label>
-            <input
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              placeholder="admin@novaretail.com"
-            />
-
-            <label>Contrasena</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              placeholder="Ingresa tu contrasena"
-            />
-
-            {error && <p className="error">{error}</p>}
-
-            <button type="submit">Iniciar sesion</button>
-          </form>
-        </section>
-      </main>
+        </div>
+      </div>
     );
   }
 
@@ -1319,144 +1313,132 @@ function App() {
   };
 
   return (
-    <main className="dashboard-page">
-      <aside className="sidebar">
-        <div className="sidebar-top">
-          <div className="brand sidebar-brand">
-            <span className="brand-icon">NR</span>
-            <div>
-              <h2>NovaRetail</h2>
-              <p>Analytics</p>
-            </div>
+    <div className="sap-shell">
+      {/* ── Shell Bar ── */}
+      <header className="shell-bar">
+        <div className="shell-bar__logo" onClick={() => setVistaActual("dashboard")}>
+          <div className="shell-bar__logo-icon">NR</div>
+          <div>
+            <span className="shell-bar__logo-name">NovaRetail</span>
+            <span className="shell-bar__logo-sub">ERP Analytics</span>
           </div>
         </div>
 
-        <nav>
-          {MENU.map((item) => (
-            <button
-              key={item.id}
-              className={`menu-link ${vistaActual === item.id ? "active" : ""}`}
-              onClick={() => setVistaActual(item.id)}
-            >
-              <Icon name={item.icon} size={16} />
-              {item.label}
-            </button>
-          ))}
+        <div className="shell-bar__spacer" />
 
+        <div className="shell-bar__scope">
+          <select value={empresaScope} onChange={(e) => void cambiarEmpresaScope(e.target.value)}>
+            <option value="all">Todas las empresas</option>
+            <option value="custom">Empresas seleccionadas</option>
+          </select>
+          {empresaScope === "custom" && (
+            <div className="shell-bar__empresa-checks">
+              {empresas.map((emp) => (
+                <label key={emp.id}>
+                  <input type="checkbox" checked={empresasSeleccionadas.includes(emp.id)} onChange={() => void toggleEmpresaSeleccionada(emp.id)} />
+                  {emp.nombre}
+                </label>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="shell-bar__user">
+          <div className="shell-bar__avatar">{(usuario?.nombre || "U").charAt(0).toUpperCase()}</div>
+          <span className="shell-bar__username">{usuario?.nombre || "Usuario"} · {usuario?.rol || ""}</span>
+          <button className="shell-bar__logout" onClick={logout} title="Cerrar sesion"><Icon name="logout" size={15} /></button>
+        </div>
+      </header>
+
+      {/* ── Body ── */}
+      <div className="sap-body">
+        {/* ── Side Navigation ── */}
+        <nav className="side-nav">
+          <div className="side-nav__section">
+            <div className="side-nav__section-title">Modulos</div>
+            {MENU.map((item) => (
+              <button key={item.id} className={`nav-item ${vistaActual === item.id ? "active" : ""}`} onClick={() => setVistaActual(item.id)}>
+                <Icon name={item.icon} size={15} />
+                {item.label}
+              </button>
+            ))}
+          </div>
           {puedeAdministrar && (
-            <button
-              className={`menu-link ${vistaActual === "ajustes" ? "active" : ""}`}
-              onClick={() => setVistaActual("ajustes")}
-            >
-              <Icon name="ajustes" size={16} />
-              Ajustes
-            </button>
+            <div className="side-nav__section">
+              <div className="side-nav__section-title">Administracion</div>
+              <button className={`nav-item ${vistaActual === "ajustes" ? "active" : ""}`} onClick={() => setVistaActual("ajustes")}>
+                <Icon name="ajustes" size={15} />
+                Ajustes
+              </button>
+            </div>
           )}
         </nav>
 
-        <div className="sidebar-footer">
-          <div className="avatar">
-            {(usuario?.nombre || "U").charAt(0).toUpperCase()}
-          </div>
-          <div className="user-info">
-            <strong>{usuario?.nombre || "Usuario"}</strong>
-            <span>{usuario?.rol || ""}</span>
-          </div>
-          <button className="btn-logout" onClick={logout} title="Cerrar sesion">
-            <Icon name="logout" size={16} />
-          </button>
-        </div>
-      </aside>
-
-      <section className="content">
-        <header className="topbar">
-          <div className="topbar-left">
-            <h1>{MODULE_TITLES[vistaActual] || "NovaRetail"}</h1>
-            <p>Gestion multiempresa · {empresaScope === "all" ? "Todas las empresas" : `${empresasSeleccionadas.length} seleccionadas`}</p>
-          </div>
-          <div className="topbar-right">
-            <div className="empresa-selector">
-              <select
-                value={empresaScope}
-                onChange={(event) => void cambiarEmpresaScope(event.target.value)}
-              >
-                <option value="all">Todas las empresas</option>
-                <option value="custom">Empresas seleccionadas</option>
-              </select>
-              {empresaScope === "custom" && (
-                <div className="empresa-checks">
-                  {empresas.map((empresa) => (
-                    <label key={empresa.id}>
-                      <input
-                        type="checkbox"
-                        checked={empresasSeleccionadas.includes(empresa.id)}
-                        onChange={() => void toggleEmpresaSeleccionada(empresa.id)}
-                      />
-                      {empresa.nombre}
-                    </label>
-                  ))}
-                </div>
-              )}
+        {/* ── Main content ── */}
+        <main className="sap-page">
+          <div className="page-header">
+            <div>
+              <div className="page-header__title">{MODULE_TITLES[vistaActual] || "NovaRetail"}</div>
+              <div className="page-header__sub">NovaRetail ERP · {empresaScope === "all" ? "Todas las empresas" : `${empresasSeleccionadas.length} empresa(s) seleccionada(s)`}</div>
             </div>
           </div>
-        </header>
 
-        <div className="page-content">
-        {error && !modalActivo && <p className="error" style={{ marginBottom: 14 }}>{error}</p>}
-        {mensaje && <p className="success" style={{ marginBottom: 14 }}>{mensaje}</p>}
+          <div className="page-body">
+          {error && !modalActivo && <p className="error" style={{ marginBottom: 14 }}>{error}</p>}
+          {mensaje && <p className="success" style={{ marginBottom: 14 }}>{mensaje}</p>}
 
         {vistaActual === "dashboard" && dashboard && (
           <>
-            <section className="cards-grid">
-              <article className="metric-card metric-card--green">
-                <Icon name="ventas" size={32} className="metric-card__icon" />
-                <span className="metric-card__label">Ventas totales</span>
-                <div className="metric-card__value">Q {dashboard.ventas_totales.toFixed(2)}</div>
-                <span className="metric-card__sub">Segun empresas seleccionadas</span>
+            <div className="kpi-tiles">
+              <article className="kpi-tile kpi-tile--green">
+                <div className="kpi-tile__header"><div className="kpi-tile__icon"><Icon name="ventas" size={18} /></div></div>
+                <span className="kpi-tile__value">Q {dashboard.ventas_totales.toFixed(2)}</span>
+                <span className="kpi-tile__label">Ventas totales</span>
+                <span className="kpi-tile__sub">Segun empresas seleccionadas</span>
               </article>
-              <article className="metric-card metric-card--indigo">
-                <Icon name="ventas" size={32} className="metric-card__icon" />
-                <span className="metric-card__label">Ventas del mes</span>
-                <div className="metric-card__value">Q {Number(dashboard.ventas_mes || 0).toFixed(2)}</div>
-                <span className="metric-card__sub">Mes del rango actual</span>
+              <article className="kpi-tile kpi-tile--blue">
+                <div className="kpi-tile__header"><div className="kpi-tile__icon"><Icon name="ventas" size={18} /></div></div>
+                <span className="kpi-tile__value">Q {Number(dashboard.ventas_mes || 0).toFixed(2)}</span>
+                <span className="kpi-tile__label">Ventas del mes</span>
+                <span className="kpi-tile__sub">Periodo actual</span>
               </article>
-              <article className="metric-card metric-card--red">
-                <Icon name="inventario" size={32} className="metric-card__icon" />
-                <span className="metric-card__label">Alertas de stock</span>
-                <div className="metric-card__value">{dashboard.alertas_count}</div>
-                <span className="metric-card__sub">Productos con stock critico</span>
+              <article className="kpi-tile kpi-tile--red">
+                <div className="kpi-tile__header"><div className="kpi-tile__icon"><Icon name="inventario" size={18} /></div></div>
+                <span className="kpi-tile__value">{dashboard.alertas_count}</span>
+                <span className="kpi-tile__label">Alertas de stock</span>
+                <span className="kpi-tile__sub">Productos criticos</span>
               </article>
-              <article className="metric-card metric-card--amber">
-                <Icon name="compras" size={32} className="metric-card__icon" />
-                <span className="metric-card__label">Compras del mes</span>
-                <div className="metric-card__value">Q {Number(dashboard.compras_mes || 0).toFixed(2)}</div>
-                <span className="metric-card__sub">Ordenes registradas</span>
+              <article className="kpi-tile kpi-tile--orange">
+                <div className="kpi-tile__header"><div className="kpi-tile__icon"><Icon name="compras" size={18} /></div></div>
+                <span className="kpi-tile__value">Q {Number(dashboard.compras_mes || 0).toFixed(2)}</span>
+                <span className="kpi-tile__label">Compras del mes</span>
+                <span className="kpi-tile__sub">Ordenes registradas</span>
               </article>
-              <article className="metric-card metric-card--sky">
-                <Icon name="ventas" size={32} className="metric-card__icon" />
-                <span className="metric-card__label">Ordenes pendientes</span>
-                <div className="metric-card__value">{dashboard.ordenes_pendientes || 0}</div>
-                <span className="metric-card__sub">Ordenes de venta activas</span>
+              <article className="kpi-tile kpi-tile--teal">
+                <div className="kpi-tile__header"><div className="kpi-tile__icon"><Icon name="ventas" size={18} /></div></div>
+                <span className="kpi-tile__value">{dashboard.ordenes_pendientes || 0}</span>
+                <span className="kpi-tile__label">Ordenes pendientes</span>
+                <span className="kpi-tile__sub">Ordenes de venta activas</span>
               </article>
-              <article className="metric-card metric-card--indigo">
-                <Icon name="facturas" size={32} className="metric-card__icon" />
-                <span className="metric-card__label">Cotizaciones</span>
-                <div className="metric-card__value">{dashboard.cotizaciones_pendientes || 0}</div>
-                <span className="metric-card__sub">Por confirmar</span>
+              <article className="kpi-tile kpi-tile--blue">
+                <div className="kpi-tile__header"><div className="kpi-tile__icon"><Icon name="facturas" size={18} /></div></div>
+                <span className="kpi-tile__value">{dashboard.cotizaciones_pendientes || 0}</span>
+                <span className="kpi-tile__label">Cotizaciones</span>
+                <span className="kpi-tile__sub">Por confirmar</span>
               </article>
-              <article className="metric-card metric-card--green">
-                <Icon name="empleados" size={32} className="metric-card__icon" />
-                <span className="metric-card__label">Empleados activos</span>
-                <div className="metric-card__value">{dashboard.empleados_activos || 0}</div>
-                <span className="metric-card__sub">Personal registrado</span>
+              <article className="kpi-tile kpi-tile--green">
+                <div className="kpi-tile__header"><div className="kpi-tile__icon"><Icon name="empleados" size={18} /></div></div>
+                <span className="kpi-tile__value">{dashboard.empleados_activos || 0}</span>
+                <span className="kpi-tile__label">Empleados activos</span>
+                <span className="kpi-tile__sub">Personal registrado</span>
               </article>
-              <article className="metric-card metric-card--amber">
-                <Icon name="vacaciones" size={32} className="metric-card__icon" />
-                <span className="metric-card__label">Vacaciones pendientes</span>
-                <div className="metric-card__value">{dashboard.vacaciones_pendientes || 0}</div>
-                <span className="metric-card__sub">Solicitudes por aprobar</span>
+              <article className="kpi-tile kpi-tile--orange">
+                <div className="kpi-tile__header"><div className="kpi-tile__icon"><Icon name="vacaciones" size={18} /></div></div>
+                <span className="kpi-tile__value">{dashboard.vacaciones_pendientes || 0}</span>
+                <span className="kpi-tile__label">Vacaciones pendientes</span>
+                <span className="kpi-tile__sub">Solicitudes por aprobar</span>
               </article>
-            </section>
+            </div>
 
             <div className="dash-grid-2">
               <div className="panel">
@@ -2425,9 +2407,10 @@ function App() {
             )}
           </>
         )}
+          </div>
+        </main>
       </div>
-      </section>
-    </main>
+    </div>
   );
 }
 
