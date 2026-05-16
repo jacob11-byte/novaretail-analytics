@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e \"const fs=require\\('fs'\\); const s=fs.readFileSync\\('frontend/src/App.jsx','utf8'\\); const lines=s.split\\('\\\\n'\\); lines.forEach\\(\\(l,i\\)=>{ if\\(l.includes\\('legacy removed'\\) || l.includes\\('{false &&'\\) || l.includes\\('panel-header'\\) && l.includes\\('Compras'\\) || l.includes\\('tabCompras'\\) && l.includes\\('ordenes'\\)\\) console.log\\(i+1, l.trim\\(\\).substring\\(0,80\\)\\); }\\);\")",
+      "Bash(node -e \"const fs=require\\('fs'\\); const s=fs.readFileSync\\('frontend/src/App.jsx','utf8'\\); const lines=s.split\\('\\\\n'\\); lines.forEach\\(\\(l,i\\)=>{ if\\(\\(l.includes\\('vistaActual'\\) && \\(l.includes\\('inventario'\\) || l.includes\\('empleados'\\) || l.includes\\('vacaciones'\\) || l.includes\\('reportes'\\) || l.includes\\('auditoria'\\) || l.includes\\('ajustes'\\)\\)\\) || \\(l.includes\\('vistaActual'\\) && l.includes\\('pos'\\)\\)\\) console.log\\(i+1, l.trim\\(\\)\\); }\\);\")"
+    ]
+  }
+}

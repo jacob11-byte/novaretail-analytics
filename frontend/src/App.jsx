@@ -7,6 +7,56 @@ import {
 } from "recharts";
 import "./App.css";
 
+function Icon({ name, size = 18 }) {
+  const icons = {
+    dashboard:   "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6",
+    ventas:      "M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z",
+    pos:         "M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z",
+    compras:     "M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z",
+    facturas:    "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z",
+    inventario:  "M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4",
+    empleados:   "M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z",
+    vacaciones:  "M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z",
+    reportes:    "M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z",
+    auditoria:   "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4",
+    ajustes:     "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z",
+    plus:        "M12 5v14M5 12h14",
+    search:      "M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z",
+    x:           "M6 18L18 6M6 6l12 12",
+    download:    "M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4",
+    logout:      "M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1",
+    check:       "M5 13l4 4L19 7",
+  };
+  const d = icons[name];
+  if (!d) return null;
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size}
+      viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+      style={{ display: "inline-block", verticalAlign: "middle", flexShrink: 0 }}>
+      <path d={d} />
+    </svg>
+  );
+}
+
+function Modal({ open, onClose, title, error, children }) {
+  if (!open) return null;
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-box" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <h2>{title}</h2>
+          <button className="modal-close" onClick={onClose}>✕</button>
+        </div>
+        <div className="modal-body">
+          {error && <p className="modal-error">{error}</p>}
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const API_URL = import.meta.env.VITE_API_URL;
 const ROLES = ["admin", "gerente", "supervisor", "vendedor", "bodega", "rrhh"];
 
@@ -182,6 +232,16 @@ function App() {
   const [vacacionesForm, setVacacionesForm] = useState(emptyVacaciones);
   const [error, setError] = useState("");
   const [mensaje, setMensaje] = useState("");
+  const [modalActivo, setModalActivo] = useState(null);
+  const [busquedaVentas, setBusquedaVentas] = useState("");
+  const [busquedaClientes, setBusquedaClientes] = useState("");
+  const [busquedaCompras, setBusquedaCompras] = useState("");
+  const [busquedaProveedores, setBusquedaProveedores] = useState("");
+  const [busquedaFacturas, setBusquedaFacturas] = useState("");
+  const [busquedaInventario, setBusquedaInventario] = useState("");
+  const [busquedaProductos, setBusquedaProductos] = useState("");
+  const [busquedaEmpleados, setBusquedaEmpleados] = useState("");
+  const [busquedaVacaciones, setBusquedaVacaciones] = useState("");
 
   const authHeaders = useMemo(
     () => ({
@@ -1137,6 +1197,63 @@ function App() {
     }
   }
 
+  useEffect(() => {
+    if (mensaje) setModalActivo(null);
+  }, [mensaje]);
+
+  function filtrar(rows, q, campos) {
+    if (!q || !rows) return rows ?? [];
+    const term = q.toLowerCase();
+    return rows.filter((row) =>
+      campos.some((c) => String(row[c] ?? "").toLowerCase().includes(term))
+    );
+  }
+
+  const cotizacionesFiltradas = useMemo(
+    () => filtrar(cotizaciones, busquedaVentas, ["numero", "cliente", "estado"]),
+    [cotizaciones, busquedaVentas]
+  );
+  const ordenesFiltradas = useMemo(
+    () => filtrar(ordenesVenta, busquedaVentas, ["numero", "cliente", "estado"]),
+    [ordenesVenta, busquedaVentas]
+  );
+  const clientesFiltrados = useMemo(
+    () => filtrar(clientes, busquedaClientes, ["nombre", "nit", "email", "telefono"]),
+    [clientes, busquedaClientes]
+  );
+  const ventasFiltradas = useMemo(
+    () => filtrar(ventas, busquedaVentas, ["producto", "canal", "fecha"]),
+    [ventas, busquedaVentas]
+  );
+  const comprasFiltradas = useMemo(
+    () => filtrar(compras, busquedaCompras, ["numero", "proveedor", "estado"]),
+    [compras, busquedaCompras]
+  );
+  const proveedoresFiltrados = useMemo(
+    () => filtrar(proveedores, busquedaProveedores, ["nombre", "nit", "email"]),
+    [proveedores, busquedaProveedores]
+  );
+  const facturasFiltradas = useMemo(
+    () => filtrar(facturas, busquedaFacturas, ["numero", "cliente", "estado"]),
+    [facturas, busquedaFacturas]
+  );
+  const inventarioFiltrado = useMemo(
+    () => filtrar(inventario, busquedaInventario, ["cod_producto", "nombre", "categoria"]),
+    [inventario, busquedaInventario]
+  );
+  const productosFiltrados = useMemo(
+    () => filtrar(productos, busquedaProductos, ["cod_producto", "nombre", "categoria"]),
+    [productos, busquedaProductos]
+  );
+  const empleadosFiltrados = useMemo(
+    () => filtrar(empleados, busquedaEmpleados, ["codigo", "nombre", "puesto", "departamento"]),
+    [empleados, busquedaEmpleados]
+  );
+  const vacacionesFiltradas = useMemo(
+    () => filtrar(vacaciones, busquedaVacaciones, ["empleado", "estado"]),
+    [vacaciones, busquedaVacaciones]
+  );
+
   if (!token) {
     return (
       <main className="login-page">
@@ -1174,70 +1291,90 @@ function App() {
     );
   }
 
+  const MENU = [
+    { id: "dashboard",  label: "Dashboard",       icon: "dashboard" },
+    { id: "ventas",     label: "Ventas",           icon: "ventas" },
+    { id: "pos",        label: "Punto de venta",   icon: "pos" },
+    { id: "compras",    label: "Compras",           icon: "compras" },
+    { id: "facturas",   label: "Facturas",          icon: "facturas" },
+    { id: "inventario", label: "Inventario",        icon: "inventario" },
+    { id: "empleados",  label: "Empleados",         icon: "empleados" },
+    { id: "vacaciones", label: "Vacaciones",        icon: "vacaciones" },
+    { id: "reportes",   label: "Reportes",          icon: "reportes" },
+    { id: "auditoria",  label: "Auditoria",         icon: "auditoria" },
+  ];
+
+  const MODULE_TITLES = {
+    dashboard:  "Dashboard",
+    ventas:     "Ventas",
+    pos:        "Punto de venta",
+    compras:    "Compras",
+    facturas:   "Facturas",
+    inventario: "Inventario",
+    empleados:  "Empleados",
+    vacaciones: "Vacaciones",
+    reportes:   "Reportes",
+    auditoria:  "Auditoria",
+    ajustes:    "Ajustes",
+  };
+
   return (
     <main className="dashboard-page">
       <aside className="sidebar">
-        <div className="brand sidebar-brand">
-          <span className="brand-icon">NR</span>
-          <div>
-            <h2>NovaRetail</h2>
-            <p>Analytics</p>
+        <div className="sidebar-top">
+          <div className="brand sidebar-brand">
+            <span className="brand-icon">NR</span>
+            <div>
+              <h2>NovaRetail</h2>
+              <p>Analytics</p>
+            </div>
           </div>
         </div>
 
         <nav>
-          {[
-            "dashboard",
-            "ventas",
-            "pos",
-            "compras",
-            "facturas",
-            "inventario",
-            "empleados",
-            "vacaciones",
-            "reportes",
-            "auditoria",
-          ].map(
-            (vista) => (
-              <button
-                key={vista}
-                className={`menu-link ${vistaActual === vista ? "active" : ""}`}
-                onClick={() => setVistaActual(vista)}
-              >
-                {vista === "dashboard"
-                  ? "Dashboard"
-                  : vista === "pos"
-                    ? "Punto de venta"
-                    : vista === "compras"
-                      ? "Compras"
-                      : vista === "facturas"
-                        ? "Facturas"
-                  : vista.charAt(0).toUpperCase() + vista.slice(1)}
-              </button>
-            )
-          )}
+          {MENU.map((item) => (
+            <button
+              key={item.id}
+              className={`menu-link ${vistaActual === item.id ? "active" : ""}`}
+              onClick={() => setVistaActual(item.id)}
+            >
+              <Icon name={item.icon} size={16} />
+              {item.label}
+            </button>
+          ))}
 
           {puedeAdministrar && (
             <button
               className={`menu-link ${vistaActual === "ajustes" ? "active" : ""}`}
               onClick={() => setVistaActual("ajustes")}
             >
+              <Icon name="ajustes" size={16} />
               Ajustes
             </button>
           )}
         </nav>
+
+        <div className="sidebar-footer">
+          <div className="avatar">
+            {(usuario?.nombre || "U").charAt(0).toUpperCase()}
+          </div>
+          <div className="user-info">
+            <strong>{usuario?.nombre || "Usuario"}</strong>
+            <span>{usuario?.rol || ""}</span>
+          </div>
+          <button className="btn-logout" onClick={logout} title="Cerrar sesion">
+            <Icon name="logout" size={16} />
+          </button>
+        </div>
       </aside>
 
       <section className="content">
         <header className="topbar">
-          <div>
-            <h1>
-              {vistaActual === "ajustes" ? "Ajustes" : "Dashboard principal"}
-            </h1>
-            <p>Gestion multiempresa, usuarios y datos operativos.</p>
+          <div className="topbar-left">
+            <h1>{MODULE_TITLES[vistaActual] || "NovaRetail"}</h1>
+            <p>Gestion multiempresa · {empresaScope === "all" ? "Todas las empresas" : `${empresasSeleccionadas.length} seleccionadas`}</p>
           </div>
-
-          <div className="topbar-actions">
+          <div className="topbar-right">
             <div className="empresa-selector">
               <select
                 value={empresaScope}
@@ -1246,7 +1383,6 @@ function App() {
                 <option value="all">Todas las empresas</option>
                 <option value="custom">Empresas seleccionadas</option>
               </select>
-
               {empresaScope === "custom" && (
                 <div className="empresa-checks">
                   {empresas.map((empresa) => (
@@ -1262,1711 +1398,1034 @@ function App() {
                 </div>
               )}
             </div>
-
-            <div className="user-box">
-              <span>{usuario?.nombre || "Usuario"}</span>
-              <button onClick={logout}>Salir</button>
-            </div>
           </div>
         </header>
 
-        {error && <p className="error">{error}</p>}
-        {mensaje && <p className="success">{mensaje}</p>}
+        <div className="page-content">
+        {error && !modalActivo && <p className="error" style={{ marginBottom: 14 }}>{error}</p>}
+        {mensaje && <p className="success" style={{ marginBottom: 14 }}>{mensaje}</p>}
 
         {vistaActual === "dashboard" && dashboard && (
           <>
             <section className="cards-grid">
-              <article className="metric-card">
-                <span>Ventas totales</span>
-                <strong>Q {dashboard.ventas_totales.toFixed(2)}</strong>
-                <small>Segun empresas seleccionadas</small>
+              <article className="metric-card metric-card--green">
+                <Icon name="ventas" size={32} className="metric-card__icon" />
+                <span className="metric-card__label">Ventas totales</span>
+                <div className="metric-card__value">Q {dashboard.ventas_totales.toFixed(2)}</div>
+                <span className="metric-card__sub">Segun empresas seleccionadas</span>
               </article>
-
-              <article className="metric-card">
-                <span>Ventas del mes</span>
-                <strong>Q {Number(dashboard.ventas_mes || 0).toFixed(2)}</strong>
-                <small>Mes del rango actual</small>
+              <article className="metric-card metric-card--indigo">
+                <Icon name="ventas" size={32} className="metric-card__icon" />
+                <span className="metric-card__label">Ventas del mes</span>
+                <div className="metric-card__value">Q {Number(dashboard.ventas_mes || 0).toFixed(2)}</div>
+                <span className="metric-card__sub">Mes del rango actual</span>
               </article>
-
-              <article className="metric-card">
-                <span>Alertas activas</span>
-                <strong>{dashboard.alertas_count}</strong>
-                <small>Productos con stock critico</small>
+              <article className="metric-card metric-card--red">
+                <Icon name="inventario" size={32} className="metric-card__icon" />
+                <span className="metric-card__label">Alertas de stock</span>
+                <div className="metric-card__value">{dashboard.alertas_count}</div>
+                <span className="metric-card__sub">Productos con stock critico</span>
               </article>
-
-              <article className="metric-card">
-                <span>Empresas visibles</span>
-                <strong>{empresaScope === "all" ? empresas.length : empresasSeleccionadas.length}</strong>
-                <small>Permisos del usuario actual</small>
+              <article className="metric-card metric-card--amber">
+                <Icon name="compras" size={32} className="metric-card__icon" />
+                <span className="metric-card__label">Compras del mes</span>
+                <div className="metric-card__value">Q {Number(dashboard.compras_mes || 0).toFixed(2)}</div>
+                <span className="metric-card__sub">Ordenes registradas</span>
               </article>
-
-              <article className="metric-card">
-                <span>Compras del mes</span>
-                <strong>Q {Number(dashboard.compras_mes || 0).toFixed(2)}</strong>
-                <small>Ordenes recibidas o registradas</small>
+              <article className="metric-card metric-card--sky">
+                <Icon name="ventas" size={32} className="metric-card__icon" />
+                <span className="metric-card__label">Ordenes pendientes</span>
+                <div className="metric-card__value">{dashboard.ordenes_pendientes || 0}</div>
+                <span className="metric-card__sub">Ordenes de venta activas</span>
               </article>
-
-              <article className="metric-card">
-                <span>Ordenes pendientes</span>
-                <strong>{dashboard.ordenes_pendientes || 0}</strong>
-                <small>Ordenes de venta activas</small>
+              <article className="metric-card metric-card--indigo">
+                <Icon name="facturas" size={32} className="metric-card__icon" />
+                <span className="metric-card__label">Cotizaciones</span>
+                <div className="metric-card__value">{dashboard.cotizaciones_pendientes || 0}</div>
+                <span className="metric-card__sub">Por confirmar</span>
               </article>
-
-              <article className="metric-card">
-                <span>Cotizaciones pendientes</span>
-                <strong>{dashboard.cotizaciones_pendientes || 0}</strong>
-                <small>Cotizaciones por confirmar</small>
+              <article className="metric-card metric-card--green">
+                <Icon name="empleados" size={32} className="metric-card__icon" />
+                <span className="metric-card__label">Empleados activos</span>
+                <div className="metric-card__value">{dashboard.empleados_activos || 0}</div>
+                <span className="metric-card__sub">Personal registrado</span>
               </article>
-
-              <article className="metric-card">
-                <span>Empleados activos</span>
-                <strong>{dashboard.empleados_activos || 0}</strong>
-                <small>Personal registrado activo</small>
-              </article>
-
-              <article className="metric-card">
-                <span>Vacaciones pendientes</span>
-                <strong>{dashboard.vacaciones_pendientes || 0}</strong>
-                <small>Solicitudes por aprobar</small>
+              <article className="metric-card metric-card--amber">
+                <Icon name="vacaciones" size={32} className="metric-card__icon" />
+                <span className="metric-card__label">Vacaciones pendientes</span>
+                <div className="metric-card__value">{dashboard.vacaciones_pendientes || 0}</div>
+                <span className="metric-card__sub">Solicitudes por aprobar</span>
               </article>
             </section>
 
-            <section className="main-grid">
-              <article className="panel">
-                <h2>Comparativa por canal</h2>
+            <div className="dash-grid-2">
+              <div className="panel">
+                <div className="panel-title">Ventas por canal</div>
                 <DataTable
                   columns={["Canal", "Total"]}
                   rows={dashboard.comparativa_canales}
-                  renderRow={(item) => [
-                    item.canal,
-                    `Q ${Number(item.total).toFixed(2)}`,
-                  ]}
+                  renderRow={(item) => [item.canal, `Q ${Number(item.total).toFixed(2)}`]}
                 />
-              </article>
-
-              <article className="panel">
-                <h2>Top productos</h2>
+              </div>
+              <div className="panel">
+                <div className="panel-title">Top 10 productos</div>
                 <DataTable
-                  columns={["Producto", "Unidades"]}
+                  columns={["Producto", "Unidades vendidas"]}
                   rows={dashboard.top_productos}
                   renderRow={(item) => [item.cod_producto, item.total_vendido]}
                 />
-              </article>
-            </section>
+              </div>
+            </div>
 
-            <section className="panel">
-              <h2>Ultimos movimientos de inventario</h2>
+            <div className="panel" style={{ marginBottom: 16 }}>
+              <div className="panel-title">Ultimos movimientos de inventario</div>
               <DataTable
-                columns={["Fecha", "Producto", "Tipo", "Cantidad", "Stock"]}
+                columns={["Fecha", "Producto", "Tipo", "Cantidad", "Stock nuevo"]}
                 rows={dashboard.ultimos_movimientos || []}
-                renderRow={(movimiento) => [
-                  new Date(movimiento.created_at).toLocaleString(),
-                  movimiento.producto,
-                  movimiento.tipo_movimiento,
-                  movimiento.cantidad,
-                  movimiento.stock_nuevo,
+                renderRow={(m) => [
+                  new Date(m.created_at).toLocaleString(),
+                  m.producto,
+                  <span key={m.created_at} className={`badge ${m.tipo_movimiento?.includes("salida") ? "alta" : "normal"}`}>{m.tipo_movimiento}</span>,
+                  m.cantidad,
+                  m.stock_nuevo,
                 ]}
               />
-            </section>
+            </div>
 
             <AlertasPanel alertas={alertas} />
 
-            <AnalisisVisual
-              dashboard={dashboard}
-              inventario={inventario}
-              alertas={alertas}
-            />
+            <AnalisisVisual dashboard={dashboard} inventario={inventario} alertas={alertas} />
           </>
         )}
 
         {vistaActual === "ventas" && (
-          <section className="panel">
-            <div className="panel-header">
-              <div>
-                <h2>Modulo de ventas</h2>
-                <p>Cotizaciones, ordenes de venta y clientes.</p>
-              </div>
+          <>
+            <Modal open={modalActivo === "nueva_cotizacion"} onClose={() => { setModalActivo(null); setError(""); }} title="Nueva cotizacion" error={modalActivo === "nueva_cotizacion" ? error : ""}>
+              <DocumentoVentaForm title="" form={cotizacionForm} setForm={setCotizacionForm} clientes={clientes} empresaActivaId={empresaActivaId} onSubmit={crearCotizacion} />
+            </Modal>
+            <Modal open={modalActivo === "nueva_orden"} onClose={() => { setModalActivo(null); setError(""); }} title="Nueva orden de venta" error={modalActivo === "nueva_orden" ? error : ""}>
+              <DocumentoVentaForm title="" form={ordenForm} setForm={setOrdenForm} clientes={clientes} empresaActivaId={empresaActivaId} onSubmit={crearOrdenVenta} showOrdenDespacho />
+            </Modal>
+            <Modal open={modalActivo === "nuevo_cliente"} onClose={() => { setModalActivo(null); setError(""); setCotizacionForm(emptyDocumentoVenta); }} title="Nuevo cliente" error={modalActivo === "nuevo_cliente" ? error : ""}>
+              <form onSubmit={crearCliente}>
+                <div className="form-field"><label>Nombre</label><input value={clienteForm.nombre} onChange={e => setClienteForm({...clienteForm, nombre: e.target.value})} placeholder="Nombre completo" /></div>
+                <div className="form-field"><label>NIT</label><input value={clienteForm.nit} onChange={e => setClienteForm({...clienteForm, nit: e.target.value})} placeholder="NIT" /></div>
+                <div className="form-row">
+                  <div className="form-field"><label>Telefono</label><input value={clienteForm.telefono} onChange={e => setClienteForm({...clienteForm, telefono: e.target.value})} placeholder="Telefono" /></div>
+                  <div className="form-field"><label>Email</label><input value={clienteForm.email} onChange={e => setClienteForm({...clienteForm, email: e.target.value})} placeholder="Email" /></div>
+                </div>
+                <div className="form-field"><label>Direccion</label><input value={clienteForm.direccion} onChange={e => setClienteForm({...clienteForm, direccion: e.target.value})} placeholder="Direccion" /></div>
+                <div className="modal-actions">
+                  <button type="submit" className="btn-primary" disabled={!empresaActivaId}><Icon name="check" size={14} /> Crear cliente</button>
+                  <button type="button" className="btn-secondary" onClick={() => setModalActivo(null)}>Cancelar</button>
+                </div>
+              </form>
+            </Modal>
 
-              <button
-                className="secondary-button"
-                onClick={() => void descargarReporte("ventas")}
-              >
-                Descargar Excel
-              </button>
+            <div className="module-header">
+              <div><h2>Ventas</h2><p>Cotizaciones, ordenes de venta, clientes e historial.</p></div>
+              <div className="module-header__actions">
+                <button className="btn-secondary" onClick={() => void descargarReporte("ventas")}><Icon name="download" size={14} /> Exportar Excel</button>
+              </div>
             </div>
 
             <div className="tabs">
-              {["cotizaciones", "ordenes", "clientes", "historico"].map((tab) => (
-                <button
-                  key={tab}
-                  className={tabVentas === tab ? "active" : ""}
-                  onClick={() => setTabVentas(tab)}
-                >
-                  {tab === "ordenes" ? "Ordenes de venta" : tab.charAt(0).toUpperCase() + tab.slice(1)}
-                </button>
+              {[["cotizaciones","Cotizaciones"],["ordenes","Ordenes de venta"],["clientes","Clientes"],["historico","Historico"]].map(([id,label]) => (
+                <button key={id} className={tabVentas === id ? "active" : ""} onClick={() => { setTabVentas(id); setBusquedaVentas(""); }}>{label}</button>
               ))}
             </div>
 
             {tabVentas === "cotizaciones" && (
-              <div className="settings-grid">
-                <DocumentoVentaForm
-                  title="Nueva cotizacion"
-                  form={cotizacionForm}
-                  setForm={setCotizacionForm}
-                  clientes={clientes}
-                  empresaActivaId={empresaActivaId}
-                  onSubmit={crearCotizacion}
-                />
-
-                <div>
-                  <h2>Cotizaciones</h2>
-                  <DataTable
-                    columns={["Numero", "Cliente", "Fecha", "Estado", "Total", "Accion"]}
-                    rows={cotizaciones}
-                    renderRow={(cotizacion) => [
-                      cotizacion.numero,
-                      cotizacion.cliente,
-                      new Date(cotizacion.fecha_creacion).toLocaleDateString(),
-                      <span
-                        key={cotizacion.id}
-                        className={`badge ${String(cotizacion.estado).replace("_", "-")}`}
-                      >
-                        {cotizacion.estado}
-                      </span>,
-                      `Q ${Number(cotizacion.total).toFixed(2)}`,
-                      cotizacion.estado === "orden_venta" ? (
-                        "Confirmada"
-                      ) : (
-                        <button
-                          key={`${cotizacion.id}-confirmar`}
-                          className="table-action"
-                          onClick={() => void confirmarCotizacion(cotizacion.id)}
-                        >
-                          Confirmar
-                        </button>
-                      ),
+              <>
+                <div className="table-toolbar">
+                  <div className="search-box"><Icon name="search" size={14} /><input placeholder="Buscar cotizacion..." value={busquedaVentas} onChange={e => setBusquedaVentas(e.target.value)} /></div>
+                  <span className="result-count">{cotizacionesFiltradas.length} registros</span>
+                  <button className="btn-primary" onClick={() => setModalActivo("nueva_cotizacion")} disabled={!empresaActivaId}><Icon name="plus" size={14} /> Nueva cotizacion</button>
+                </div>
+                <div className="panel">
+                  <DataTable columns={["Numero","Cliente","Fecha","Estado","Total","Accion"]} rows={cotizacionesFiltradas}
+                    renderRow={(c) => [c.numero, c.cliente, new Date(c.fecha_creacion).toLocaleDateString(),
+                      <span key={c.id} className={`badge ${String(c.estado).replace("_","-")}`}>{c.estado}</span>,
+                      `Q ${Number(c.total).toFixed(2)}`,
+                      c.estado === "orden_venta" ? <span className="badge normal">Confirmada</span> :
+                        <button className="table-action" onClick={() => void confirmarCotizacion(c.id)}>Confirmar</button>
                     ]}
                   />
                 </div>
-              </div>
+              </>
             )}
 
             {tabVentas === "ordenes" && (
-              <div className="settings-grid">
-                <DocumentoVentaForm
-                  title="Nueva orden de venta"
-                  form={ordenForm}
-                  setForm={setOrdenForm}
-                  clientes={clientes}
-                  empresaActivaId={empresaActivaId}
-                  onSubmit={crearOrdenVenta}
-                  showOrdenDespacho
-                />
-
-                <div>
-                  <h2>Ordenes de venta</h2>
-                  <DataTable
-                    columns={["Numero", "Cliente", "Fecha", "Estado", "Total", "Accion"]}
-                    rows={ordenesVenta}
-                    renderRow={(orden) => [
-                      orden.numero,
-                      orden.cliente,
-                      new Date(orden.fecha_orden).toLocaleDateString(),
-                      <span key={orden.id} className={`badge ${orden.estado}`}>
-                        {orden.estado}
-                      </span>,
-                      `Q ${Number(orden.total).toFixed(2)}`,
-                      orden.estado === "cancelado" ? (
-                        "Cancelada"
-                      ) : (
-                        <button
-                          key={`${orden.id}-cancelar`}
-                          className="table-action"
-                          onClick={() => void cancelarOrdenVenta(orden.id)}
-                        >
-                          Cancelar
-                        </button>
-                      ),
+              <>
+                <div className="table-toolbar">
+                  <div className="search-box"><Icon name="search" size={14} /><input placeholder="Buscar orden..." value={busquedaVentas} onChange={e => setBusquedaVentas(e.target.value)} /></div>
+                  <span className="result-count">{ordenesFiltradas.length} registros</span>
+                  <button className="btn-primary" onClick={() => setModalActivo("nueva_orden")} disabled={!empresaActivaId}><Icon name="plus" size={14} /> Nueva orden</button>
+                </div>
+                <div className="panel">
+                  <DataTable columns={["Numero","Cliente","Fecha","Estado","Total","Accion"]} rows={ordenesFiltradas}
+                    renderRow={(o) => [o.numero, o.cliente, new Date(o.fecha_orden).toLocaleDateString(),
+                      <span key={o.id} className={`badge ${o.estado}`}>{o.estado}</span>,
+                      `Q ${Number(o.total).toFixed(2)}`,
+                      o.estado === "cancelado" ? <span className="badge critica">Cancelada</span> :
+                        <button className="table-action" onClick={() => void cancelarOrdenVenta(o.id)}>Cancelar</button>
                     ]}
                   />
                 </div>
-              </div>
+              </>
             )}
 
             {tabVentas === "clientes" && (
-              <div className="settings-grid">
-                <form className="admin-form" onSubmit={crearCliente}>
-                  <h2>Nuevo cliente</h2>
-                  <input
-                    value={clienteForm.nombre}
-                    onChange={(event) =>
-                      setClienteForm({ ...clienteForm, nombre: event.target.value })
-                    }
-                    placeholder="Nombre"
-                  />
-                  <input
-                    value={clienteForm.nit}
-                    onChange={(event) =>
-                      setClienteForm({ ...clienteForm, nit: event.target.value })
-                    }
-                    placeholder="NIT"
-                  />
-                  <input
-                    value={clienteForm.telefono}
-                    onChange={(event) =>
-                      setClienteForm({ ...clienteForm, telefono: event.target.value })
-                    }
-                    placeholder="Telefono"
-                  />
-                  <input
-                    value={clienteForm.email}
-                    onChange={(event) =>
-                      setClienteForm({ ...clienteForm, email: event.target.value })
-                    }
-                    placeholder="Email"
-                  />
-                  <input
-                    value={clienteForm.direccion}
-                    onChange={(event) =>
-                      setClienteForm({ ...clienteForm, direccion: event.target.value })
-                    }
-                    placeholder="Direccion"
-                  />
-                  <button type="submit" disabled={!empresaActivaId}>
-                    Crear cliente
-                  </button>
-                </form>
-
-                <div>
-                  <h2>Clientes</h2>
-                  <DataTable
-                    columns={["Nombre", "NIT", "Telefono", "Email", "Empresa", "Estado"]}
-                    rows={clientes}
-                    renderRow={(cliente) => [
-                      cliente.nombre,
-                      cliente.nit || "-",
-                      cliente.telefono || "-",
-                      cliente.email || "-",
-                      cliente.empresa,
-                      cliente.estado,
+              <>
+                <div className="table-toolbar">
+                  <div className="search-box"><Icon name="search" size={14} /><input placeholder="Buscar cliente..." value={busquedaClientes} onChange={e => setBusquedaClientes(e.target.value)} /></div>
+                  <span className="result-count">{clientesFiltrados.length} registros</span>
+                  <button className="btn-primary" onClick={() => setModalActivo("nuevo_cliente")} disabled={!empresaActivaId}><Icon name="plus" size={14} /> Nuevo cliente</button>
+                </div>
+                <div className="panel">
+                  <DataTable columns={["Nombre","NIT","Telefono","Email","Empresa","Estado"]} rows={clientesFiltrados}
+                    renderRow={(c) => [c.nombre, c.nit||"-", c.telefono||"-", c.email||"-", c.empresa,
+                      <span key={c.id} className={`badge ${c.estado}`}>{c.estado}</span>
                     ]}
                   />
                 </div>
-              </div>
+              </>
             )}
 
             {tabVentas === "historico" && (
-              <DataTable
-                columns={["Fecha", "Producto", "Canal", "Cantidad", "Precio", "Total"]}
-                rows={ventas}
-                renderRow={(venta) => [
-                  new Date(venta.fecha).toLocaleDateString(),
-                  venta.producto,
-                  venta.canal,
-                  venta.cantidad,
-                  `Q ${Number(venta.precio_unitario).toFixed(2)}`,
-                  `Q ${Number(venta.total).toFixed(2)}`,
-                ]}
-              />
+              <>
+                <div className="table-toolbar">
+                  <div className="search-box"><Icon name="search" size={14} /><input placeholder="Buscar..." value={busquedaVentas} onChange={e => setBusquedaVentas(e.target.value)} /></div>
+                  <span className="result-count">{ventasFiltradas.length} registros</span>
+                </div>
+                <div className="panel">
+                  <DataTable columns={["Fecha","Producto","Canal","Cantidad","Precio","Total"]} rows={ventasFiltradas}
+                    renderRow={(v) => [new Date(v.fecha).toLocaleDateString(), v.producto, v.canal, v.cantidad,
+                      `Q ${Number(v.precio_unitario).toFixed(2)}`, `Q ${Number(v.total).toFixed(2)}`
+                    ]}
+                  />
+                </div>
+              </>
             )}
-          </section>
+          </>
         )}
 
         {vistaActual === "pos" && (
-          <section className="panel">
-            <div className="panel-header">
+          <>
+            <div className="module-header">
               <div>
-                <h2>Punto de venta</h2>
+                <h1><Icon name="pos" size={22} /> Punto de venta</h1>
                 <p>Venta rapida con carrito, pagos y corte de caja.</p>
               </div>
-
-              <button
-                className="secondary-button"
-                onClick={() => void buscarProductosPos()}
-                disabled={!empresaActivaId}
-              >
-                Buscar productos
-              </button>
+              <div className="module-header__actions">
+                <button className="btn-secondary" onClick={() => void buscarProductosPos()} disabled={!empresaActivaId}>
+                  <Icon name="search" size={14} /> Cargar productos
+                </button>
+              </div>
             </div>
 
-            <div className="pos-grid">
-              <section className="pos-products">
-                <div className="pos-search">
-                  <input
-                    value={busquedaPos}
-                    onChange={(event) => setBusquedaPos(event.target.value)}
-                    placeholder="Buscar por codigo o nombre"
-                  />
-                  <button onClick={() => void buscarProductosPos()}>
-                    Buscar
-                  </button>
+            <div className="pos-layout">
+              <section className="pos-products-panel">
+                <div className="table-toolbar" style={{marginBottom:"1rem"}}>
+                  <div className="search-box">
+                    <Icon name="search" size={14} />
+                    <input value={busquedaPos} onChange={e => setBusquedaPos(e.target.value)} onKeyDown={e => e.key === "Enter" && void buscarProductosPos()} placeholder="Buscar por codigo o nombre..." />
+                  </div>
+                  <button className="btn-primary" onClick={() => void buscarProductosPos()}>Buscar</button>
                 </div>
-
-                <DataTable
-                  columns={["Producto", "Codigo", "Stock", "Precio", "Accion"]}
-                  rows={productosPos}
-                  renderRow={(producto) => [
-                    producto.nombre,
-                    producto.cod_producto,
-                    producto.stock_fisico,
-                    `Q ${Number(producto.precio_unitario).toFixed(2)}`,
-                    <button
-                      key={`${producto.cod_producto}-add`}
-                      className="table-action"
-                      onClick={() => agregarProductoPos(producto)}
-                    >
-                      Agregar
-                    </button>,
-                  ]}
-                />
+                {productosPos.length === 0 ? (
+                  <div className="empty-state" style={{padding:"3rem",textAlign:"center"}}>Carga productos para empezar a vender.</div>
+                ) : (
+                  <div className="pos-product-grid">
+                    {productosPos.map(prod => (
+                      <button key={prod.cod_producto} className="pos-product-card" onClick={() => agregarProductoPos(prod)} disabled={prod.stock_fisico <= 0}>
+                        <div className="pos-product-card__icon"><Icon name="inventario" size={24} /></div>
+                        <div className="pos-product-card__name">{prod.nombre}</div>
+                        <div className="pos-product-card__code">{prod.cod_producto}</div>
+                        <div className="pos-product-card__price">Q {Number(prod.precio_unitario).toFixed(2)}</div>
+                        <div className={`pos-product-card__stock ${prod.stock_fisico <= 0 ? "out" : ""}`}>Stock: {prod.stock_fisico}</div>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </section>
 
-              <section className="pos-cart">
-                <h2>Carrito</h2>
-                <DataTable
-                  columns={["Producto", "Cant.", "Precio", "Subtotal"]}
-                  rows={carritoPos}
-                  renderRow={(item) => [
-                    item.descripcion,
-                    <input
-                      key={`${item.cod_producto}-cantidad`}
-                      type="number"
-                      min="0"
-                      step="1"
-                      value={item.cantidad}
-                      onChange={(event) =>
-                        actualizarCantidadPos(item.cod_producto, event.target.value)
-                      }
-                    />,
-                    `Q ${Number(item.precio_unitario).toFixed(2)}`,
-                    `Q ${(Number(item.cantidad) * Number(item.precio_unitario)).toFixed(2)}`,
-                  ]}
-                />
-
-                <div className="pos-summary">
-                  <label>
-                    Descuento
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={descuentoPos}
-                      onChange={(event) => setDescuentoPos(event.target.value)}
-                    />
-                  </label>
-                  <label>
-                    Metodo de pago
-                    <select
-                      value={metodoPagoPos}
-                      onChange={(event) => setMetodoPagoPos(event.target.value)}
-                    >
-                      <option value="efectivo">Efectivo</option>
-                      <option value="tarjeta">Tarjeta</option>
-                      <option value="transferencia">Transferencia</option>
-                      <option value="mixto">Mixto</option>
-                    </select>
-                  </label>
-                  <strong>Total: Q {calcularTotalCarrito(carritoPos, descuentoPos).toFixed(2)}</strong>
-                  <button
-                    onClick={() => void finalizarVentaPos()}
-                    disabled={!empresaActivaId || carritoPos.length === 0}
-                  >
+              <section className="pos-cart-panel">
+                <h2 style={{fontWeight:700,fontSize:"1rem",marginBottom:"1rem",color:"var(--text)"}}>Carrito</h2>
+                {carritoPos.length === 0 ? (
+                  <div className="empty-state" style={{padding:"2rem",textAlign:"center",fontSize:"0.875rem"}}>Agrega productos al carrito.</div>
+                ) : (
+                  <div className="pos-cart-items">
+                    {carritoPos.map(item => (
+                      <div key={item.cod_producto} className="pos-cart-item">
+                        <div className="pos-cart-item__name">{item.descripcion}</div>
+                        <div className="pos-cart-item__controls">
+                          <input type="number" min="0" step="1" value={item.cantidad} onChange={e => actualizarCantidadPos(item.cod_producto, e.target.value)} />
+                          <span className="pos-cart-item__price">Q {(Number(item.cantidad) * Number(item.precio_unitario)).toFixed(2)}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div className="pos-cart-footer">
+                  <div className="form-row" style={{gap:"0.5rem",marginBottom:"0.75rem"}}>
+                    <div className="form-field" style={{margin:0,flex:1}}><label>Descuento (Q)</label><input type="number" min="0" step="0.01" value={descuentoPos} onChange={e => setDescuentoPos(e.target.value)} /></div>
+                    <div className="form-field" style={{margin:0,flex:1}}><label>Metodo de pago</label>
+                      <select value={metodoPagoPos} onChange={e => setMetodoPagoPos(e.target.value)}>
+                        <option value="efectivo">Efectivo</option>
+                        <option value="tarjeta">Tarjeta</option>
+                        <option value="transferencia">Transferencia</option>
+                        <option value="mixto">Mixto</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="pos-cart-total">
+                    Total con IVA: <strong>Q {calcularTotalCarrito(carritoPos, descuentoPos).toFixed(2)}</strong>
+                  </div>
+                  <button className="btn-primary pos-btn-sell" onClick={() => void finalizarVentaPos()} disabled={!empresaActivaId || carritoPos.length === 0}>
                     Finalizar venta
                   </button>
                 </div>
               </section>
             </div>
 
-            <section className="main-grid pos-history">
-              <article className="panel embedded-panel">
-                <div className="panel-header">
-                  <div>
-                    <h2>Corte de caja</h2>
-                    <p>Apertura y cierre del dia actual.</p>
-                  </div>
+            <div className="main-grid" style={{marginTop:"1.5rem",gap:"1.5rem",display:"grid",gridTemplateColumns:"1fr 1fr"}}>
+              <div className="panel">
+                <div className="table-toolbar">
+                  <h2 style={{margin:0,fontWeight:600,fontSize:"0.95rem"}}>Corte de caja</h2>
                 </div>
-                <div className="cash-actions">
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={montoInicialCaja}
-                    onChange={(event) => setMontoInicialCaja(event.target.value)}
-                    placeholder="Monto inicial"
-                  />
-                  <button onClick={() => void abrirCorteCaja()} disabled={!empresaActivaId}>
-                    Abrir
-                  </button>
-                  <button
-                    className="secondary-button"
-                    onClick={() => void cerrarCorteCaja()}
-                    disabled={!empresaActivaId}
-                  >
-                    Cerrar
-                  </button>
+                <div className="cash-actions" style={{display:"flex",gap:"0.5rem",marginBottom:"1rem",alignItems:"center"}}>
+                  <input type="number" min="0" step="0.01" value={montoInicialCaja} onChange={e => setMontoInicialCaja(e.target.value)} placeholder="Monto inicial (Q)" style={{flex:1}} />
+                  <button className="btn-primary" onClick={() => void abrirCorteCaja()} disabled={!empresaActivaId}>Abrir</button>
+                  <button className="btn-secondary" onClick={() => void cerrarCorteCaja()} disabled={!empresaActivaId}>Cerrar</button>
                 </div>
+                <table className="data-table">
+                  <thead><tr><th>Empresa</th><th>Inicial</th><th>Ventas</th><th>Estado</th></tr></thead>
+                  <tbody>
+                    {cortesCaja.length === 0 ? <tr><td colSpan={4} className="empty-state">Sin cortes registrados.</td></tr>
+                    : cortesCaja.map((c, i) => (
+                      <tr key={i}><td>{c.empresa}</td><td>Q {Number(c.monto_inicial).toFixed(2)}</td><td>Q {Number(c.total_ventas).toFixed(2)}</td><td><span className={`badge ${c.estado === "abierto" ? "activo" : ""}`}>{c.estado}</span></td></tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
 
-                <DataTable
-                  columns={["Empresa", "Inicial", "Ventas", "Estado"]}
-                  rows={cortesCaja}
-                  renderRow={(corte) => [
-                    corte.empresa,
-                    `Q ${Number(corte.monto_inicial).toFixed(2)}`,
-                    `Q ${Number(corte.total_ventas).toFixed(2)}`,
-                    corte.estado,
-                  ]}
-                />
-              </article>
-
-              <article className="panel embedded-panel">
-                <h2>Ventas del dia</h2>
-                <DataTable
-                  columns={["Hora", "Metodo", "Descuento", "Total"]}
-                  rows={ventasPosDia}
-                  renderRow={(venta) => [
-                    new Date(venta.fecha).toLocaleTimeString(),
-                    venta.metodo_pago,
-                    `Q ${Number(venta.descuento).toFixed(2)}`,
-                    `Q ${Number(venta.total).toFixed(2)}`,
-                  ]}
-                />
-              </article>
-            </section>
-          </section>
+              <div className="panel">
+                <div className="table-toolbar">
+                  <h2 style={{margin:0,fontWeight:600,fontSize:"0.95rem"}}>Ventas del dia</h2>
+                  <span className="record-count">{ventasPosDia.length} ventas</span>
+                </div>
+                <table className="data-table">
+                  <thead><tr><th>Hora</th><th>Metodo</th><th>Descuento</th><th>Total</th></tr></thead>
+                  <tbody>
+                    {ventasPosDia.length === 0 ? <tr><td colSpan={4} className="empty-state">Sin ventas hoy.</td></tr>
+                    : ventasPosDia.map((v, i) => (
+                      <tr key={i}><td>{new Date(v.fecha).toLocaleTimeString()}</td><td>{v.metodo_pago}</td><td>Q {Number(v.descuento).toFixed(2)}</td><td><strong>Q {Number(v.total).toFixed(2)}</strong></td></tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </>
         )}
 
         {vistaActual === "compras" && (
-          <section className="panel">
-            <div className="panel-header">
-              <div>
-                <h2>Compras</h2>
-                <p>Proveedores, ordenes de compra y recepcion de inventario.</p>
-              </div>
+          <>
+            <Modal open={modalActivo === "nueva_compra"} onClose={() => { setModalActivo(null); setError(""); setCompraForm(emptyCompra); }} title={compraForm.id ? "Editar orden" : "Nueva orden de compra"} error={modalActivo === "nueva_compra" ? error : ""}>
+              <form onSubmit={crearCompra}>
+                <div className="form-field"><label>Proveedor</label>
+                  <select value={compraForm.proveedor_id} onChange={e => setCompraForm({...compraForm, proveedor_id: e.target.value})}>
+                    <option value="">Sin proveedor registrado</option>
+                    {proveedores.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+                  </select>
+                </div>
+                <div className="form-field"><label>Producto</label>
+                  <select value={compraForm.cod_producto} onChange={e => { const prod = productos.find(x=>x.cod_producto===e.target.value); setCompraForm({...compraForm, cod_producto: e.target.value, descripcion: prod?.nombre || compraForm.descripcion}); }}>
+                    <option value="">Selecciona producto</option>
+                    {productos.map(p => <option key={p.cod_producto} value={p.cod_producto}>{p.cod_producto} - {p.nombre}</option>)}
+                  </select>
+                </div>
+                <div className="form-field"><label>Descripcion</label><input value={compraForm.descripcion} onChange={e => setCompraForm({...compraForm, descripcion: e.target.value})} placeholder="Descripcion" /></div>
+                <div className="form-row">
+                  <div className="form-field"><label>Cantidad</label><input type="number" min="0" step="1" value={compraForm.cantidad} onChange={e => setCompraForm({...compraForm, cantidad: e.target.value})} placeholder="Cantidad" /></div>
+                  <div className="form-field"><label>Costo unitario</label><input type="number" min="0" step="0.01" value={compraForm.costo_unitario} onChange={e => setCompraForm({...compraForm, costo_unitario: e.target.value})} placeholder="Q 0.00" /></div>
+                </div>
+                <div className="form-field"><label>Estado</label>
+                  <select value={compraForm.estado} onChange={e => setCompraForm({...compraForm, estado: e.target.value})}>
+                    <option value="borrador">Borrador</option>
+                    <option value="orden_enviada">Orden enviada</option>
+                  </select>
+                </div>
+                <div className="modal-actions">
+                  <button type="submit" className="btn-primary" disabled={!empresaActivaId || !compraForm.cod_producto}><Icon name="check" size={14} /> {compraForm.id ? "Guardar cambios" : "Crear orden"}</button>
+                  <button type="button" className="btn-secondary" onClick={() => setModalActivo(null)}>Cancelar</button>
+                </div>
+              </form>
+            </Modal>
+            <Modal open={modalActivo === "nuevo_proveedor"} onClose={() => { setModalActivo(null); setError(""); setProveedorForm(emptyProveedor); }} title="Nuevo proveedor" error={modalActivo === "nuevo_proveedor" ? error : ""}>
+              <form onSubmit={crearProveedor}>
+                <div className="form-field"><label>Nombre</label><input value={proveedorForm.nombre} onChange={e => setProveedorForm({...proveedorForm, nombre: e.target.value})} placeholder="Nombre" /></div>
+                <div className="form-field"><label>NIT</label><input value={proveedorForm.nit} onChange={e => setProveedorForm({...proveedorForm, nit: e.target.value})} placeholder="NIT" /></div>
+                <div className="form-row">
+                  <div className="form-field"><label>Telefono</label><input value={proveedorForm.telefono} onChange={e => setProveedorForm({...proveedorForm, telefono: e.target.value})} placeholder="Telefono" /></div>
+                  <div className="form-field"><label>Email</label><input value={proveedorForm.email} onChange={e => setProveedorForm({...proveedorForm, email: e.target.value})} placeholder="Email" /></div>
+                </div>
+                <div className="form-field"><label>Direccion</label><input value={proveedorForm.direccion} onChange={e => setProveedorForm({...proveedorForm, direccion: e.target.value})} placeholder="Direccion" /></div>
+                <div className="modal-actions">
+                  <button type="submit" className="btn-primary" disabled={!empresaActivaId}><Icon name="check" size={14} /> Crear proveedor</button>
+                  <button type="button" className="btn-secondary" onClick={() => setModalActivo(null)}>Cancelar</button>
+                </div>
+              </form>
+            </Modal>
+
+            <div className="module-header">
+              <div><h2>Compras</h2><p>Proveedores, ordenes de compra y recepcion de inventario.</p></div>
             </div>
 
             <div className="tabs">
-              {["ordenes", "proveedores"].map((tab) => (
-                <button
-                  key={tab}
-                  className={tabCompras === tab ? "active" : ""}
-                  onClick={() => setTabCompras(tab)}
-                >
-                  {tab === "ordenes" ? "Ordenes de compra" : "Proveedores"}
-                </button>
+              {[["ordenes","Ordenes de compra"],["proveedores","Proveedores"]].map(([id,label]) => (
+                <button key={id} className={tabCompras === id ? "active" : ""} onClick={() => setTabCompras(id)}>{label}</button>
               ))}
             </div>
 
             {tabCompras === "ordenes" && (
-              <div className="settings-grid">
-                <form className="admin-form" onSubmit={crearCompra}>
-                  <h2>Nueva orden de compra</h2>
-                  <select
-                    value={compraForm.proveedor_id}
-                    onChange={(event) =>
-                      setCompraForm({
-                        ...compraForm,
-                        proveedor_id: event.target.value,
-                      })
-                    }
-                  >
-                    <option value="">Proveedor no registrado</option>
-                    {proveedores.map((proveedor) => (
-                      <option key={proveedor.id} value={proveedor.id}>
-                        {proveedor.nombre}
-                      </option>
-                    ))}
-                  </select>
-                  <select
-                    value={compraForm.cod_producto}
-                    onChange={(event) => {
-                      const producto = productos.find(
-                        (item) => item.cod_producto === event.target.value
-                      );
-                      setCompraForm({
-                        ...compraForm,
-                        cod_producto: event.target.value,
-                        descripcion: producto?.nombre || compraForm.descripcion,
-                      });
-                    }}
-                  >
-                    <option value="">Selecciona producto</option>
-                    {productos.map((producto) => (
-                      <option key={producto.cod_producto} value={producto.cod_producto}>
-                        {producto.cod_producto} - {producto.nombre}
-                      </option>
-                    ))}
-                  </select>
-                  <input
-                    value={compraForm.descripcion}
-                    onChange={(event) =>
-                      setCompraForm({
-                        ...compraForm,
-                        descripcion: event.target.value,
-                      })
-                    }
-                    placeholder="Descripcion"
-                  />
-                  <div className="form-row">
-                    <input
-                      type="number"
-                      min="0"
-                      step="1"
-                      value={compraForm.cantidad}
-                      onChange={(event) =>
-                        setCompraForm({
-                          ...compraForm,
-                          cantidad: event.target.value,
-                        })
-                      }
-                      placeholder="Cantidad"
-                    />
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={compraForm.costo_unitario}
-                      onChange={(event) =>
-                        setCompraForm({
-                          ...compraForm,
-                          costo_unitario: event.target.value,
-                        })
-                      }
-                      placeholder="Costo unitario"
-                    />
-                  </div>
-                  <select
-                    value={compraForm.estado}
-                    onChange={(event) =>
-                      setCompraForm({ ...compraForm, estado: event.target.value })
-                    }
-                  >
-                    <option value="borrador">Borrador</option>
-                    <option value="orden_enviada">Orden enviada</option>
-                  </select>
-                  <button
-                    type="submit"
-                    disabled={!empresaActivaId || !compraForm.cod_producto}
-                  >
-                    {compraForm.id ? "Guardar orden" : "Crear orden"}
-                  </button>
-                  {compraForm.id && (
-                    <button
-                      type="button"
-                      className="secondary-button"
-                      onClick={() => setCompraForm(emptyCompra)}
-                    >
-                      Nueva orden
-                    </button>
-                  )}
-                </form>
-
-                <div>
-                  <h2>Ordenes de compra</h2>
-                  <DataTable
-                    columns={["Numero", "Proveedor", "Fecha", "Estado", "Total", "Accion"]}
-                    rows={compras}
-                    renderRow={(compra) => [
-                      compra.numero,
-                      compra.proveedor,
-                      new Date(compra.fecha).toLocaleDateString(),
-                      <span key={compra.id} className={`badge ${compra.estado}`}>
-                        {compra.estado}
-                      </span>,
-                      `Q ${Number(compra.total).toFixed(2)}`,
-                      <div key={`${compra.id}-acciones`} className="inline-actions">
-                        <button
-                          className="table-action"
-                          onClick={() => void abrirCompra(compra.id)}
-                        >
-                          Abrir
-                        </button>
-                        {compra.estado !== "recibida" && compra.estado !== "cancelada" && (
-                          <button
-                            className="table-action"
-                            onClick={() => void recibirCompra(compra.id)}
-                          >
-                            Recibir
-                          </button>
+              <>
+                <div className="table-toolbar">
+                  <div className="search-box"><Icon name="search" size={14} /><input placeholder="Buscar orden..." value={busquedaCompras} onChange={e => setBusquedaCompras(e.target.value)} /></div>
+                  <span className="result-count">{comprasFiltradas.length} registros</span>
+                  <button className="btn-primary" onClick={() => { setCompraForm(emptyCompra); setModalActivo("nueva_compra"); }} disabled={!empresaActivaId}><Icon name="plus" size={14} /> Nueva orden</button>
+                </div>
+                <div className="panel">
+                  <DataTable columns={["Numero","Proveedor","Fecha","Estado","Total","Acciones"]} rows={comprasFiltradas}
+                    renderRow={(c) => [c.numero, c.proveedor||"-", new Date(c.fecha).toLocaleDateString(),
+                      <span key={c.id} className={`badge ${c.estado}`}>{c.estado}</span>,
+                      `Q ${Number(c.total).toFixed(2)}`,
+                      <div key={`${c.id}-ac`} className="inline-actions">
+                        <button className="table-action" onClick={() => void abrirCompra(c.id).then(() => setModalActivo("nueva_compra"))}>Editar</button>
+                        {c.estado !== "recibida" && c.estado !== "cancelada" && (
+                          <button className="table-action" onClick={() => void recibirCompra(c.id)}>Recibir</button>
                         )}
-                      </div>,
+                      </div>
                     ]}
                   />
                 </div>
-              </div>
+              </>
             )}
 
             {tabCompras === "proveedores" && (
-              <div className="settings-grid">
-                <form className="admin-form" onSubmit={crearProveedor}>
-                  <h2>Nuevo proveedor</h2>
-                  <input
-                    value={proveedorForm.nombre}
-                    onChange={(event) =>
-                      setProveedorForm({
-                        ...proveedorForm,
-                        nombre: event.target.value,
-                      })
-                    }
-                    placeholder="Nombre"
-                  />
-                  <input
-                    value={proveedorForm.nit}
-                    onChange={(event) =>
-                      setProveedorForm({ ...proveedorForm, nit: event.target.value })
-                    }
-                    placeholder="NIT"
-                  />
-                  <input
-                    value={proveedorForm.telefono}
-                    onChange={(event) =>
-                      setProveedorForm({
-                        ...proveedorForm,
-                        telefono: event.target.value,
-                      })
-                    }
-                    placeholder="Telefono"
-                  />
-                  <input
-                    value={proveedorForm.email}
-                    onChange={(event) =>
-                      setProveedorForm({ ...proveedorForm, email: event.target.value })
-                    }
-                    placeholder="Email"
-                  />
-                  <input
-                    value={proveedorForm.direccion}
-                    onChange={(event) =>
-                      setProveedorForm({
-                        ...proveedorForm,
-                        direccion: event.target.value,
-                      })
-                    }
-                    placeholder="Direccion"
-                  />
-                  <button type="submit" disabled={!empresaActivaId}>
-                    Crear proveedor
-                  </button>
-                </form>
-
-                <div>
-                  <h2>Proveedores</h2>
-                  <DataTable
-                    columns={["Nombre", "NIT", "Telefono", "Email", "Estado"]}
-                    rows={proveedores}
-                    renderRow={(proveedor) => [
-                      proveedor.nombre,
-                      proveedor.nit || "-",
-                      proveedor.telefono || "-",
-                      proveedor.email || "-",
-                      proveedor.estado,
+              <>
+                <div className="table-toolbar">
+                  <div className="search-box"><Icon name="search" size={14} /><input placeholder="Buscar proveedor..." value={busquedaProveedores} onChange={e => setBusquedaProveedores(e.target.value)} /></div>
+                  <span className="result-count">{proveedoresFiltrados.length} registros</span>
+                  <button className="btn-primary" onClick={() => { setProveedorForm(emptyProveedor); setModalActivo("nuevo_proveedor"); }} disabled={!empresaActivaId}><Icon name="plus" size={14} /> Nuevo proveedor</button>
+                </div>
+                <div className="panel">
+                  <DataTable columns={["Nombre","NIT","Telefono","Email","Estado"]} rows={proveedoresFiltrados}
+                    renderRow={(p) => [p.nombre, p.nit||"-", p.telefono||"-", p.email||"-",
+                      <span key={p.id} className={`badge ${p.estado}`}>{p.estado}</span>
                     ]}
                   />
                 </div>
-              </div>
+              </>
             )}
-          </section>
+          </>
         )}
 
+
         {vistaActual === "facturas" && (
-          <section className="panel">
-            <div className="panel-header">
-              <div>
-                <h2>Facturas</h2>
-                <p>Borrador, pendiente, publicado e impresion de factura.</p>
-              </div>
-            </div>
-
-            <div className="settings-grid">
-              <form className="admin-form" onSubmit={guardarFactura}>
-                <h2>{facturaForm.id ? "Editar factura" : "Nueva factura"}</h2>
-                <select
-                  value={facturaForm.empresa_id || empresaActivaId}
-                  onChange={(event) =>
-                    setFacturaForm({ ...facturaForm, empresa_id: event.target.value })
-                  }
-                >
-                  {empresas.map((empresa) => (
-                    <option key={empresa.id} value={empresa.id}>
-                      {empresa.nombre}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  value={facturaForm.cliente_id}
-                  onChange={(event) =>
-                    setFacturaForm({ ...facturaForm, cliente_id: event.target.value })
-                  }
-                >
-                  <option value="">Consumidor final</option>
-                  {clientes.map((cliente) => (
-                    <option key={cliente.id} value={cliente.id}>
-                      {cliente.nombre}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  value={facturaForm.cod_producto}
-                  onChange={(event) => {
-                    const producto = productos.find(
-                      (item) => item.cod_producto === event.target.value
-                    );
-                    setFacturaForm({
-                      ...facturaForm,
-                      cod_producto: event.target.value,
-                      descripcion: producto?.nombre || facturaForm.descripcion,
-                      precio_unitario:
-                        Number(producto?.precio_venta || 0) ||
-                        facturaForm.precio_unitario,
-                    });
-                  }}
-                >
-                  <option value="">Selecciona producto</option>
-                  {productos.map((producto) => (
-                    <option key={producto.cod_producto} value={producto.cod_producto}>
-                      {producto.cod_producto} - {producto.nombre}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  value={facturaForm.descripcion}
-                  onChange={(event) =>
-                    setFacturaForm({ ...facturaForm, descripcion: event.target.value })
-                  }
-                  placeholder="Descripcion"
-                />
-                <div className="form-row">
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={facturaForm.cantidad}
-                    onChange={(event) =>
-                      setFacturaForm({ ...facturaForm, cantidad: event.target.value })
-                    }
-                    placeholder="Cantidad"
-                  />
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={facturaForm.precio_unitario}
-                    onChange={(event) =>
-                      setFacturaForm({
-                        ...facturaForm,
-                        precio_unitario: event.target.value,
-                      })
-                    }
-                    placeholder="Precio"
-                  />
+          <>
+            <Modal open={modalActivo === "nueva_factura"} onClose={() => { setModalActivo(null); setError(""); setFacturaForm(emptyFactura); }} title={facturaForm.id ? "Editar factura" : "Nueva factura"} error={modalActivo === "nueva_factura" ? error : ""}>
+              <form onSubmit={guardarFactura}>
+                <div className="form-field"><label>Empresa</label>
+                  <select value={facturaForm.empresa_id || empresaActivaId} onChange={e => setFacturaForm({...facturaForm, empresa_id: e.target.value})}>
+                    {empresas.map(emp => <option key={emp.id} value={emp.id}>{emp.nombre}</option>)}
+                  </select>
                 </div>
-                <input
-                  value={facturaForm.notas}
-                  onChange={(event) =>
-                    setFacturaForm({ ...facturaForm, notas: event.target.value })
-                  }
-                  placeholder="Notas"
-                />
-                <button type="submit" disabled={!empresaActivaId || !facturaForm.cod_producto}>
-                  {facturaForm.id ? "Guardar cambios" : "Crear borrador"}
-                </button>
-                {facturaForm.id && (
-                  <button
-                    type="button"
-                    className="secondary-button"
-                    onClick={() => setFacturaForm(emptyFactura)}
-                  >
-                    Nueva factura
-                  </button>
-                )}
+                <div className="form-field"><label>Cliente</label>
+                  <select value={facturaForm.cliente_id} onChange={e => setFacturaForm({...facturaForm, cliente_id: e.target.value})}>
+                    <option value="">Consumidor final</option>
+                    {clientes.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                  </select>
+                </div>
+                <div className="form-field"><label>Producto</label>
+                  <select value={facturaForm.cod_producto} onChange={e => { const p = productos.find(x=>x.cod_producto===e.target.value); setFacturaForm({...facturaForm, cod_producto: e.target.value, descripcion: p?.nombre||facturaForm.descripcion, precio_unitario: Number(p?.precio_venta||0)||facturaForm.precio_unitario}); }}>
+                    <option value="">Selecciona producto</option>
+                    {productos.map(p => <option key={p.cod_producto} value={p.cod_producto}>{p.cod_producto} - {p.nombre}</option>)}
+                  </select>
+                </div>
+                <div className="form-field"><label>Descripcion</label><input value={facturaForm.descripcion} onChange={e => setFacturaForm({...facturaForm, descripcion: e.target.value})} placeholder="Descripcion del item" /></div>
+                <div className="form-row">
+                  <div className="form-field"><label>Cantidad</label><input type="number" min="0" step="0.01" value={facturaForm.cantidad} onChange={e => setFacturaForm({...facturaForm, cantidad: e.target.value})} /></div>
+                  <div className="form-field"><label>Precio unitario</label><input type="number" min="0" step="0.01" value={facturaForm.precio_unitario} onChange={e => setFacturaForm({...facturaForm, precio_unitario: e.target.value})} /></div>
+                </div>
+                <div className="form-field"><label>Notas</label><input value={facturaForm.notas} onChange={e => setFacturaForm({...facturaForm, notas: e.target.value})} placeholder="Notas opcionales" /></div>
+                <div className="modal-actions">
+                  <button type="submit" className="btn-primary" disabled={!empresaActivaId || !facturaForm.cod_producto}><Icon name="check" size={14} /> {facturaForm.id ? "Guardar cambios" : "Crear borrador"}</button>
+                  <button type="button" className="btn-secondary" onClick={() => setModalActivo(null)}>Cancelar</button>
+                </div>
               </form>
+            </Modal>
 
-              <div>
-                <h2>Facturas creadas</h2>
-                <DataTable
-                  columns={["Numero", "Cliente", "Estado", "Total", "Acciones"]}
-                  rows={facturas}
-                  renderRow={(factura) => [
-                    factura.numero,
-                    factura.cliente,
-                    <span key={factura.id} className={`badge ${factura.estado}`}>
-                      {factura.estado}
-                    </span>,
-                    `Q ${Number(factura.total).toFixed(2)}`,
-                    <div key={`${factura.id}-acciones`} className="inline-actions">
-                      <button
-                        className="table-action"
-                        onClick={() => void abrirFactura(factura.id)}
-                      >
-                        Abrir
-                      </button>
-                      {factura.estado === "borrador" && (
-                        <button
-                          className="table-action"
-                          onClick={() => void cambiarEstadoFactura(factura.id, "confirmar")}
-                        >
-                          Confirmar
-                        </button>
-                      )}
-                      {factura.estado === "pendiente" && (
-                        <button
-                          className="table-action"
-                          onClick={() => void cambiarEstadoFactura(factura.id, "validar")}
-                        >
-                          Validar
-                        </button>
-                      )}
-                      {factura.estado !== "borrador" && (
-                        <button
-                          className="table-action"
-                          onClick={() =>
-                            void cambiarEstadoFactura(
-                              factura.id,
-                              "restablecer-borrador"
-                            )
-                          }
-                        >
-                          Restablecer borrador
-                        </button>
-                      )}
-                      <button
-                        className="table-action"
-                        onClick={() => void imprimirFactura(factura.id)}
-                      >
-                        Imprimir factura
-                      </button>
-                    </div>,
-                  ]}
-                />
+            <div className="module-header">
+              <div><h2>Facturas</h2><p>Borrador, pendiente, publicado e impresion.</p></div>
+              <div className="module-header__actions">
+                <button className="btn-primary" onClick={() => { setFacturaForm(emptyFactura); setModalActivo("nueva_factura"); }} disabled={!empresaActivaId}><Icon name="plus" size={14} /> Nueva factura</button>
               </div>
             </div>
-          </section>
+
+            <div className="table-toolbar">
+              <div className="search-box"><Icon name="search" size={14} /><input placeholder="Buscar factura..." value={busquedaFacturas} onChange={e => setBusquedaFacturas(e.target.value)} /></div>
+              <span className="result-count">{facturasFiltradas.length} registros</span>
+            </div>
+            <div className="panel">
+              <DataTable columns={["Numero","Cliente","Estado","Total","Acciones"]} rows={facturasFiltradas}
+                renderRow={(f) => [f.numero, f.cliente,
+                  <span key={f.id} className={`badge ${f.estado}`}>{f.estado}</span>,
+                  `Q ${Number(f.total).toFixed(2)}`,
+                  <div key={`${f.id}-ac`} className="inline-actions">
+                    <button className="table-action" onClick={() => void abrirFactura(f.id).then(() => setModalActivo("nueva_factura"))}>Editar</button>
+                    {f.estado === "borrador" && <button className="table-action" onClick={() => void cambiarEstadoFactura(f.id, "confirmar")}>Confirmar</button>}
+                    {f.estado === "pendiente" && <button className="table-action" onClick={() => void cambiarEstadoFactura(f.id, "validar")}>Validar</button>}
+                    {f.estado !== "borrador" && <button className="table-action" onClick={() => void cambiarEstadoFactura(f.id, "restablecer-borrador")}>A borrador</button>}
+                    <button className="table-action" onClick={() => void imprimirFactura(f.id)}>Imprimir</button>
+                  </div>
+                ]}
+              />
+            </div>
+          </>
         )}
 
         {vistaActual === "inventario" && (
-          <section className="panel">
-            <div className="panel-header">
-              <div>
-                <h2>Modulo de inventario</h2>
-                <p>Productos, categorias y stock por empresa.</p>
-              </div>
+          <>
+            <Modal open={modalActivo === "ajuste_inventario"} onClose={() => { setModalActivo(null); setError(""); setAjusteInventarioForm(emptyAjusteInventario); }} title="Ajustar stock" error={modalActivo === "ajuste_inventario" ? error : ""}>
+              <form onSubmit={ajustarInventario}>
+                <div className="form-field"><label>Producto</label>
+                  <select value={ajusteInventarioForm.cod_producto} onChange={e => setAjusteInventarioForm({...ajusteInventarioForm, cod_producto: e.target.value})}>
+                    <option value="">Selecciona producto</option>
+                    {productos.map(p => <option key={p.cod_producto} value={p.cod_producto}>{p.cod_producto} - {p.nombre}</option>)}
+                  </select>
+                </div>
+                <div className="form-field"><label>Operacion</label>
+                  <select value={ajusteInventarioForm.tipo_operacion} onChange={e => setAjusteInventarioForm({...ajusteInventarioForm, tipo_operacion: e.target.value})}>
+                    <option value="aumentar">Aumentar stock</option>
+                    <option value="disminuir">Disminuir stock</option>
+                  </select>
+                </div>
+                <div className="form-row">
+                  <div className="form-field"><label>Cantidad</label><input type="number" min="1" step="1" value={ajusteInventarioForm.cantidad} onChange={e => setAjusteInventarioForm({...ajusteInventarioForm, cantidad: e.target.value})} placeholder="0" /></div>
+                  <div className="form-field"><label>Referencia</label><input value={ajusteInventarioForm.referencia} onChange={e => setAjusteInventarioForm({...ajusteInventarioForm, referencia: e.target.value})} placeholder="Motivo del ajuste" /></div>
+                </div>
+                <div className="modal-actions">
+                  <button type="submit" className="btn-primary" disabled={!empresaActivaId || !ajusteInventarioForm.cod_producto}><Icon name="check" size={14} /> Aplicar ajuste</button>
+                  <button type="button" className="btn-secondary" onClick={() => setModalActivo(null)}>Cancelar</button>
+                </div>
+              </form>
+            </Modal>
+            <Modal open={modalActivo === "nuevo_producto"} onClose={() => { setModalActivo(null); setError(""); setProductoForm(emptyProducto); }} title="Nuevo producto" error={modalActivo === "nuevo_producto" ? error : ""}>
+              <form onSubmit={crearProducto}>
+                <div className="form-row">
+                  <div className="form-field"><label>Codigo</label><input value={productoForm.cod_producto} onChange={e => setProductoForm({...productoForm, cod_producto: e.target.value})} placeholder="COD-001" /></div>
+                  <div className="form-field"><label>Tipo</label>
+                    <select value={productoForm.tipo} onChange={e => setProductoForm({...productoForm, tipo: e.target.value})}>
+                      <option value="producto">Producto</option><option value="servicio">Servicio</option><option value="insumo">Insumo</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="form-field"><label>Nombre</label><input value={productoForm.nombre} onChange={e => setProductoForm({...productoForm, nombre: e.target.value})} placeholder="Nombre del producto" /></div>
+                <div className="form-field"><label>Categoria</label>
+                  <select value={productoForm.categoria} onChange={e => setProductoForm({...productoForm, categoria: e.target.value})}>
+                    <option value="">Sin categoria</option>
+                    {categoriasProductos.map(cat => <option key={cat.id} value={cat.nombre}>{cat.nombre}</option>)}
+                  </select>
+                </div>
+                <div className="form-field"><label>Descripcion</label><input value={productoForm.descripcion} onChange={e => setProductoForm({...productoForm, descripcion: e.target.value})} placeholder="Descripcion opcional" /></div>
+                <div className="form-row">
+                  <div className="form-field"><label>Precio venta</label><input type="number" min="0" step="0.01" value={productoForm.precio_venta} onChange={e => setProductoForm({...productoForm, precio_venta: e.target.value})} placeholder="Q 0.00" /></div>
+                  <div className="form-field"><label>Stock minimo</label><input type="number" min="0" step="1" value={productoForm.stock_minimo} onChange={e => setProductoForm({...productoForm, stock_minimo: e.target.value})} placeholder="0" /></div>
+                </div>
+                <div className="form-field"><label>Stock inicial</label><input type="number" min="0" step="1" value={productoForm.stock_inicial} onChange={e => setProductoForm({...productoForm, stock_inicial: e.target.value})} placeholder="0" /></div>
+                <div className="modal-actions">
+                  <button type="submit" className="btn-primary" disabled={!empresaActivaId}><Icon name="check" size={14} /> Crear producto</button>
+                  <button type="button" className="btn-secondary" onClick={() => setModalActivo(null)}>Cancelar</button>
+                </div>
+              </form>
+            </Modal>
+            <Modal open={modalActivo === "nueva_categoria"} onClose={() => { setModalActivo(null); setError(""); setCategoriaForm(emptyCategoria); }} title="Nueva categoria" error={modalActivo === "nueva_categoria" ? error : ""}>
+              <form onSubmit={crearCategoriaProducto}>
+                <div className="form-field"><label>Nombre</label><input value={categoriaForm.nombre} onChange={e => setCategoriaForm({...categoriaForm, nombre: e.target.value})} placeholder="Nombre de la categoria" /></div>
+                <div className="form-field"><label>Descripcion</label><input value={categoriaForm.descripcion} onChange={e => setCategoriaForm({...categoriaForm, descripcion: e.target.value})} placeholder="Descripcion opcional" /></div>
+                <div className="modal-actions">
+                  <button type="submit" className="btn-primary" disabled={!empresaActivaId}><Icon name="check" size={14} /> Crear categoria</button>
+                  <button type="button" className="btn-secondary" onClick={() => setModalActivo(null)}>Cancelar</button>
+                </div>
+              </form>
+            </Modal>
 
-              <button
-                className="secondary-button"
-                onClick={() => void descargarReporte("inventario")}
-              >
-                Descargar Excel
-              </button>
+            <div className="module-header">
+              <div><h2>Inventario</h2><p>Productos, categorias, stock, kardex y alertas.</p></div>
+              <div className="module-header__actions">
+                <button className="btn-secondary" onClick={() => void descargarReporte("inventario")}><Icon name="download" size={14} /> Exportar Excel</button>
+              </div>
             </div>
 
             <div className="tabs">
-              {[
-                "stock",
-                "entradas",
-                "salidas",
-                "ajustes",
-                "kardex",
-                "alertas",
-                "productos",
-                "categorias",
-              ].map((tab) => (
-                <button
-                  key={tab}
-                  className={tabInventario === tab ? "active" : ""}
-                  onClick={() => setTabInventario(tab)}
-                >
-                  {tab === "stock"
-                    ? "Stock actual"
-                    : tab === "kardex"
-                      ? "Kardex"
-                      : tab.charAt(0).toUpperCase() + tab.slice(1)}
-                </button>
+              {[["stock","Stock actual"],["entradas","Entradas"],["salidas","Salidas"],["ajustes","Ajustes"],["kardex","Kardex"],["alertas","Alertas"],["productos","Productos"],["categorias","Categorias"]].map(([id,label]) => (
+                <button key={id} className={tabInventario === id ? "active" : ""} onClick={() => setTabInventario(id)}>{label}</button>
               ))}
             </div>
 
             {tabInventario === "stock" && (
-              <DataTable
-                columns={[
-                  "Codigo",
-                  "Producto",
-                  "Categoria",
-                  "Stock fisico",
-                  "Stock reportado",
-                  "Stock minimo",
-                  "Estado",
-                ]}
-                rows={inventario}
-                renderRow={(item) => [
-                  item.cod_producto,
-                  item.nombre,
-                  item.categoria,
-                  item.stock_fisico,
-                  item.stock_reportado,
-                  item.stock_minimo,
-                  <span key={item.id} className={`badge ${item.estado.toLowerCase()}`}>
-                    {item.estado}
-                  </span>,
-                ]}
-              />
+              <>
+                <div className="table-toolbar">
+                  <div className="search-box"><Icon name="search" size={14} /><input placeholder="Buscar producto..." value={busquedaInventario} onChange={e => setBusquedaInventario(e.target.value)} /></div>
+                  <span className="result-count">{inventarioFiltrado.length} registros</span>
+                </div>
+                <div className="panel">
+                  <DataTable columns={["Codigo","Producto","Categoria","Stock fisico","Stock reportado","Minimo","Estado"]} rows={inventarioFiltrado}
+                    renderRow={(item) => [item.cod_producto, item.nombre, item.categoria||"-", item.stock_fisico, item.stock_reportado, item.stock_minimo,
+                      <span key={item.id} className={`badge ${item.estado.toLowerCase()}`}>{item.estado}</span>
+                    ]}
+                  />
+                </div>
+              </>
             )}
-
             {tabInventario === "entradas" && (
-              <MovimientosInventarioTable
-                movimientos={movimientosInventario.filter((movimiento) =>
-                  Number(movimiento.cantidad) > 0 ||
-                  String(movimiento.tipo_movimiento).includes("entrada")
-                )}
-              />
+              <div className="panel"><MovimientosInventarioTable movimientos={movimientosInventario.filter(m => Number(m.cantidad) > 0 || String(m.tipo_movimiento).includes("entrada"))} /></div>
             )}
-
             {tabInventario === "salidas" && (
-              <MovimientosInventarioTable
-                movimientos={movimientosInventario.filter((movimiento) =>
-                  Number(movimiento.cantidad) < 0 ||
-                  String(movimiento.tipo_movimiento).includes("salida")
-                )}
-              />
+              <div className="panel"><MovimientosInventarioTable movimientos={movimientosInventario.filter(m => Number(m.cantidad) < 0 || String(m.tipo_movimiento).includes("salida"))} /></div>
             )}
-
             {tabInventario === "ajustes" && (
-              <div className="settings-grid">
-                <form className="admin-form" onSubmit={ajustarInventario}>
-                  <h2>Ajustar stock</h2>
-                  <select
-                    value={ajusteInventarioForm.cod_producto}
-                    onChange={(event) =>
-                      setAjusteInventarioForm({
-                        ...ajusteInventarioForm,
-                        cod_producto: event.target.value,
-                      })
-                    }
-                  >
-                    <option value="">Selecciona producto</option>
-                    {productos.map((producto) => (
-                      <option key={producto.cod_producto} value={producto.cod_producto}>
-                        {producto.cod_producto} - {producto.nombre}
-                      </option>
-                    ))}
-                  </select>
-                  <select
-                    value={ajusteInventarioForm.tipo_operacion}
-                    onChange={(event) =>
-                      setAjusteInventarioForm({
-                        ...ajusteInventarioForm,
-                        tipo_operacion: event.target.value,
-                      })
-                    }
-                  >
-                    <option value="aumentar">Aumentar stock</option>
-                    <option value="disminuir">Disminuir stock</option>
-                  </select>
-                  <input
-                    type="number"
-                    min="1"
-                    step="1"
-                    value={ajusteInventarioForm.cantidad}
-                    onChange={(event) =>
-                      setAjusteInventarioForm({
-                        ...ajusteInventarioForm,
-                        cantidad: event.target.value,
-                      })
-                    }
-                    placeholder="Cantidad"
-                  />
-                  <input
-                    value={ajusteInventarioForm.referencia}
-                    onChange={(event) =>
-                      setAjusteInventarioForm({
-                        ...ajusteInventarioForm,
-                        referencia: event.target.value,
-                      })
-                    }
-                    placeholder="Referencia o motivo"
-                  />
-                  <button
-                    type="submit"
-                    disabled={!empresaActivaId || !ajusteInventarioForm.cod_producto}
-                  >
-                    Aplicar ajuste
-                  </button>
-                </form>
-
-                <div>
-                  <h2>Stock actual</h2>
-                  <DataTable
-                    columns={["Codigo", "Producto", "Stock", "Minimo", "Estado"]}
-                    rows={inventario}
-                    renderRow={(item) => [
-                      item.cod_producto,
-                      item.nombre,
-                      item.stock_fisico,
-                      item.stock_minimo,
-                      <span key={item.id} className={`badge ${item.estado.toLowerCase()}`}>
-                        {item.estado}
-                      </span>,
+              <>
+                <div className="table-toolbar">
+                  <span className="result-count">{inventario.length} productos en stock</span>
+                  <button className="btn-primary" onClick={() => { setAjusteInventarioForm(emptyAjusteInventario); setModalActivo("ajuste_inventario"); }} disabled={!empresaActivaId}><Icon name="plus" size={14} /> Nuevo ajuste</button>
+                </div>
+                <div className="panel">
+                  <DataTable columns={["Codigo","Producto","Stock fisico","Stock minimo","Estado"]} rows={inventario}
+                    renderRow={(item) => [item.cod_producto, item.nombre, item.stock_fisico, item.stock_minimo,
+                      <span key={item.id} className={`badge ${item.estado.toLowerCase()}`}>{item.estado}</span>
                     ]}
                   />
                 </div>
-              </div>
+              </>
             )}
-
             {tabInventario === "kardex" && (
-              <div>
+              <>
                 <div className="kardex-toolbar">
-                  <select
-                    value={kardexProducto}
-                    onChange={(event) => {
-                      setKardexProducto(event.target.value);
-                      void cargarKardex(event.target.value);
-                    }}
-                  >
+                  <select value={kardexProducto} onChange={e => { setKardexProducto(e.target.value); void cargarKardex(e.target.value); }}>
                     <option value="">Selecciona producto</option>
-                    {productos.map((producto) => (
-                      <option key={producto.cod_producto} value={producto.cod_producto}>
-                        {producto.cod_producto} - {producto.nombre}
-                      </option>
-                    ))}
+                    {productos.map(p => <option key={p.cod_producto} value={p.cod_producto}>{p.cod_producto} - {p.nombre}</option>)}
                   </select>
-                  <button
-                    className="secondary-button"
-                    onClick={() => void cargarKardex()}
-                    disabled={!kardexProducto}
-                  >
-                    Actualizar
-                  </button>
+                  <button className="btn-secondary" onClick={() => void cargarKardex()} disabled={!kardexProducto}>Actualizar</button>
                 </div>
-
-                <DataTable
-                  columns={[
-                    "Fecha",
-                    "Producto",
-                    "Tipo",
-                    "Referencia",
-                    "Cantidad",
-                    "Anterior",
-                    "Nuevo",
-                  ]}
-                  rows={kardex}
-                  renderRow={(movimiento) => [
-                    new Date(movimiento.created_at).toLocaleString(),
-                    movimiento.producto,
-                    movimiento.tipo_movimiento,
-                    movimiento.referencia || "-",
-                    movimiento.cantidad,
-                    movimiento.stock_anterior,
-                    movimiento.stock_nuevo,
-                  ]}
-                />
-              </div>
+                <div className="panel">
+                  <DataTable columns={["Fecha","Producto","Tipo","Referencia","Cantidad","Anterior","Nuevo"]} rows={kardex}
+                    renderRow={(m) => [new Date(m.created_at).toLocaleString(), m.producto, m.tipo_movimiento, m.referencia||"-", m.cantidad, m.stock_anterior, m.stock_nuevo]}
+                  />
+                </div>
+              </>
             )}
-
             {tabInventario === "alertas" && <AlertasPanel alertas={alertas} />}
-
             {tabInventario === "productos" && (
-              <div className="settings-grid">
-                <form className="admin-form" onSubmit={crearProducto}>
-                  <h2>Nuevo producto</h2>
-                  <input
-                    value={productoForm.cod_producto}
-                    onChange={(event) =>
-                      setProductoForm({
-                        ...productoForm,
-                        cod_producto: event.target.value,
-                      })
-                    }
-                    placeholder="Codigo"
-                  />
-                  <input
-                    value={productoForm.nombre}
-                    onChange={(event) =>
-                      setProductoForm({ ...productoForm, nombre: event.target.value })
-                    }
-                    placeholder="Nombre"
-                  />
-                  <select
-                    value={productoForm.tipo}
-                    onChange={(event) =>
-                      setProductoForm({ ...productoForm, tipo: event.target.value })
-                    }
-                  >
-                    <option value="producto">Producto</option>
-                    <option value="servicio">Servicio</option>
-                    <option value="insumo">Insumo</option>
-                  </select>
-                  <select
-                    value={productoForm.categoria}
-                    onChange={(event) =>
-                      setProductoForm({
-                        ...productoForm,
-                        categoria: event.target.value,
-                      })
-                    }
-                  >
-                    <option value="">Sin categoria</option>
-                    {categoriasProductos.map((categoria) => (
-                      <option key={categoria.id} value={categoria.nombre}>
-                        {categoria.nombre}
-                      </option>
-                    ))}
-                  </select>
-                  <input
-                    value={productoForm.descripcion}
-                    onChange={(event) =>
-                      setProductoForm({
-                        ...productoForm,
-                        descripcion: event.target.value,
-                      })
-                    }
-                    placeholder="Descripcion"
-                  />
-                  <div className="form-row">
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={productoForm.precio_venta}
-                      onChange={(event) =>
-                        setProductoForm({
-                          ...productoForm,
-                          precio_venta: event.target.value,
-                        })
-                      }
-                      placeholder="Precio venta"
-                    />
-                    <input
-                      type="number"
-                      min="0"
-                      step="1"
-                      value={productoForm.stock_minimo}
-                      onChange={(event) =>
-                        setProductoForm({
-                          ...productoForm,
-                          stock_minimo: event.target.value,
-                        })
-                      }
-                      placeholder="Stock minimo"
-                    />
-                  </div>
-                  <input
-                    type="number"
-                    min="0"
-                    step="1"
-                    value={productoForm.stock_inicial}
-                    onChange={(event) =>
-                      setProductoForm({
-                        ...productoForm,
-                        stock_inicial: event.target.value,
-                      })
-                    }
-                    placeholder="Stock inicial"
-                  />
-                  <button type="submit" disabled={!empresaActivaId}>
-                    Crear producto
-                  </button>
-                </form>
-
-                <div>
-                  <h2>Productos</h2>
-                  <DataTable
-                    columns={["Codigo", "Nombre", "Tipo", "Categoria", "Precio", "Stock"]}
-                    rows={productos}
-                    renderRow={(producto) => [
-                      producto.cod_producto,
-                      producto.nombre,
-                      producto.tipo,
-                      producto.categoria || "-",
-                      `Q ${Number(producto.precio_venta).toFixed(2)}`,
-                      producto.stock_fisico,
-                    ]}
+              <>
+                <div className="table-toolbar">
+                  <div className="search-box"><Icon name="search" size={14} /><input placeholder="Buscar producto..." value={busquedaProductos} onChange={e => setBusquedaProductos(e.target.value)} /></div>
+                  <span className="result-count">{productosFiltrados.length} productos</span>
+                  <button className="btn-primary" onClick={() => { setProductoForm(emptyProducto); setModalActivo("nuevo_producto"); }} disabled={!empresaActivaId}><Icon name="plus" size={14} /> Nuevo producto</button>
+                </div>
+                <div className="panel">
+                  <DataTable columns={["Codigo","Nombre","Tipo","Categoria","Precio","Stock"]} rows={productosFiltrados}
+                    renderRow={(p) => [p.cod_producto, p.nombre, p.tipo, p.categoria||"-", `Q ${Number(p.precio_venta).toFixed(2)}`, p.stock_fisico]}
                   />
                 </div>
-              </div>
+              </>
             )}
-
             {tabInventario === "categorias" && (
-              <div className="settings-grid">
-                <form className="admin-form" onSubmit={crearCategoriaProducto}>
-                  <h2>Nueva categoria</h2>
-                  <input
-                    value={categoriaForm.nombre}
-                    onChange={(event) =>
-                      setCategoriaForm({
-                        ...categoriaForm,
-                        nombre: event.target.value,
-                      })
-                    }
-                    placeholder="Nombre"
-                  />
-                  <input
-                    value={categoriaForm.descripcion}
-                    onChange={(event) =>
-                      setCategoriaForm({
-                        ...categoriaForm,
-                        descripcion: event.target.value,
-                      })
-                    }
-                    placeholder="Descripcion"
-                  />
-                  <button type="submit" disabled={!empresaActivaId}>
-                    Crear categoria
-                  </button>
-                </form>
-
-                <div>
-                  <h2>Categorias de productos</h2>
-                  <DataTable
-                    columns={["Nombre", "Descripcion", "Empresa", "Estado"]}
-                    rows={categoriasProductos}
-                    renderRow={(categoria) => [
-                      categoria.nombre,
-                      categoria.descripcion || "-",
-                      categoria.empresa,
-                      categoria.estado,
-                    ]}
+              <>
+                <div className="table-toolbar">
+                  <span className="result-count">{categoriasProductos.length} categorias</span>
+                  <button className="btn-primary" onClick={() => { setCategoriaForm(emptyCategoria); setModalActivo("nueva_categoria"); }} disabled={!empresaActivaId}><Icon name="plus" size={14} /> Nueva categoria</button>
+                </div>
+                <div className="panel">
+                  <DataTable columns={["Nombre","Descripcion","Empresa","Estado"]} rows={categoriasProductos}
+                    renderRow={(cat) => [cat.nombre, cat.descripcion||"-", cat.empresa, <span key={cat.id} className={`badge ${cat.estado}`}>{cat.estado}</span>]}
                   />
                 </div>
-              </div>
+              </>
             )}
-          </section>
+          </>
         )}
 
         {vistaActual === "empleados" && (
-          <section className="panel">
-            <div className="panel-header">
-              <div>
-                <h2>Empleados</h2>
-                <p>Registro de empleados por empresa, puesto y departamento.</p>
-              </div>
-            </div>
-
-            <div className="settings-grid">
-              <form className="admin-form" onSubmit={crearEmpleado}>
-                <h2>Nuevo empleado</h2>
-                <input
-                  value={empleadoForm.codigo}
-                  onChange={(event) =>
-                    setEmpleadoForm({ ...empleadoForm, codigo: event.target.value })
-                  }
-                  placeholder="Codigo"
-                />
-                <input
-                  value={empleadoForm.nombre}
-                  onChange={(event) =>
-                    setEmpleadoForm({ ...empleadoForm, nombre: event.target.value })
-                  }
-                  placeholder="Nombre"
-                />
-                <input
-                  value={empleadoForm.dpi}
-                  onChange={(event) =>
-                    setEmpleadoForm({ ...empleadoForm, dpi: event.target.value })
-                  }
-                  placeholder="DPI"
-                />
+          <>
+            <Modal open={modalActivo === "nuevo_empleado"} onClose={() => { setModalActivo(null); setError(""); setEmpleadoForm(emptyEmpleado); }} title="Nuevo empleado" error={modalActivo === "nuevo_empleado" ? error : ""}>
+              <form onSubmit={crearEmpleado}>
                 <div className="form-row">
-                  <input
-                    value={empleadoForm.puesto}
-                    onChange={(event) =>
-                      setEmpleadoForm({ ...empleadoForm, puesto: event.target.value })
-                    }
-                    placeholder="Puesto"
-                  />
-                  <input
-                    value={empleadoForm.departamento}
-                    onChange={(event) =>
-                      setEmpleadoForm({
-                        ...empleadoForm,
-                        departamento: event.target.value,
-                      })
-                    }
-                    placeholder="Departamento"
-                  />
+                  <div className="form-field"><label>Codigo</label><input value={empleadoForm.codigo} onChange={e => setEmpleadoForm({...empleadoForm, codigo: e.target.value})} placeholder="Ej: EMP-001" /></div>
+                  <div className="form-field"><label>DPI</label><input value={empleadoForm.dpi} onChange={e => setEmpleadoForm({...empleadoForm, dpi: e.target.value})} placeholder="DPI / Cedula" /></div>
                 </div>
-                <input
-                  type="date"
-                  value={empleadoForm.fecha_ingreso}
-                  onChange={(event) =>
-                    setEmpleadoForm({
-                      ...empleadoForm,
-                      fecha_ingreso: event.target.value,
-                    })
-                  }
-                />
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={empleadoForm.salario_base}
-                  onChange={(event) =>
-                    setEmpleadoForm({
-                      ...empleadoForm,
-                      salario_base: event.target.value,
-                    })
-                  }
-                  placeholder="Salario base"
-                />
-                <button type="submit" disabled={!empresaActivaId}>
-                  Crear empleado
-                </button>
+                <div className="form-field"><label>Nombre completo</label><input value={empleadoForm.nombre} onChange={e => setEmpleadoForm({...empleadoForm, nombre: e.target.value})} placeholder="Nombre completo" /></div>
+                <div className="form-row">
+                  <div className="form-field"><label>Puesto</label><input value={empleadoForm.puesto} onChange={e => setEmpleadoForm({...empleadoForm, puesto: e.target.value})} placeholder="Puesto" /></div>
+                  <div className="form-field"><label>Departamento</label><input value={empleadoForm.departamento} onChange={e => setEmpleadoForm({...empleadoForm, departamento: e.target.value})} placeholder="Departamento" /></div>
+                </div>
+                <div className="form-row">
+                  <div className="form-field"><label>Telefono</label><input value={empleadoForm.telefono} onChange={e => setEmpleadoForm({...empleadoForm, telefono: e.target.value})} placeholder="Telefono" /></div>
+                  <div className="form-field"><label>Email</label><input type="email" value={empleadoForm.email} onChange={e => setEmpleadoForm({...empleadoForm, email: e.target.value})} placeholder="Email" /></div>
+                </div>
+                <div className="form-field"><label>Direccion</label><input value={empleadoForm.direccion} onChange={e => setEmpleadoForm({...empleadoForm, direccion: e.target.value})} placeholder="Direccion" /></div>
+                <div className="form-row">
+                  <div className="form-field"><label>Fecha de ingreso</label><input type="date" value={empleadoForm.fecha_ingreso} onChange={e => setEmpleadoForm({...empleadoForm, fecha_ingreso: e.target.value})} /></div>
+                  <div className="form-field"><label>Salario base</label><input type="number" min="0" step="0.01" value={empleadoForm.salario_base} onChange={e => setEmpleadoForm({...empleadoForm, salario_base: e.target.value})} placeholder="Q 0.00" /></div>
+                </div>
+                <div className="modal-actions">
+                  <button type="submit" className="btn-primary" disabled={!empresaActivaId}><Icon name="check" size={14} /> Crear empleado</button>
+                  <button type="button" className="btn-secondary" onClick={() => setModalActivo(null)}>Cancelar</button>
+                </div>
               </form>
+            </Modal>
 
+            <div className="module-header">
               <div>
-                <h2>Empleados activos</h2>
-                <DataTable
-                  columns={["Codigo", "Nombre", "Puesto", "Departamento", "Estado"]}
-                  rows={empleados}
-                  renderRow={(empleado) => [
-                    empleado.codigo,
-                    empleado.nombre,
-                    empleado.puesto || "-",
-                    empleado.departamento || "-",
-                    empleado.estado,
-                  ]}
-                />
+                <h1><Icon name="empleados" size={22} /> Empleados</h1>
+                <p>Registro de personal por empresa, puesto y departamento.</p>
+              </div>
+              <div className="module-header__actions">
+                <button className="btn-primary" onClick={() => { setEmpleadoForm(emptyEmpleado); setModalActivo("nuevo_empleado"); }} disabled={!empresaActivaId}>
+                  <Icon name="plus" size={14} /> Nuevo empleado
+                </button>
               </div>
             </div>
-          </section>
+
+            <div className="panel">
+              <div className="table-toolbar">
+                <div className="search-box"><Icon name="search" size={14} /><input value={busquedaEmpleados} onChange={e => setBusquedaEmpleados(e.target.value)} placeholder="Buscar por nombre, codigo, puesto..." /></div>
+                <span className="record-count">{empleadosFiltrados.length} empleados</span>
+              </div>
+              <table className="data-table">
+                <thead><tr><th>Codigo</th><th>Nombre</th><th>Puesto</th><th>Departamento</th><th>Fecha ingreso</th><th>Salario</th><th>Estado</th></tr></thead>
+                <tbody>
+                  {empleadosFiltrados.length === 0 ? (
+                    <tr><td colSpan={7} className="empty-state">No se encontraron empleados.</td></tr>
+                  ) : empleadosFiltrados.map(emp => (
+                    <tr key={emp.id}>
+                      <td><code>{emp.codigo}</code></td>
+                      <td><strong>{emp.nombre}</strong></td>
+                      <td>{emp.puesto || "-"}</td>
+                      <td>{emp.departamento || "-"}</td>
+                      <td>{emp.fecha_ingreso ? new Date(emp.fecha_ingreso).toLocaleDateString() : "-"}</td>
+                      <td>Q {Number(emp.salario_base || 0).toFixed(2)}</td>
+                      <td><span className={`badge ${emp.estado === "activo" ? "activo" : "inactivo"}`}>{emp.estado || "activo"}</span></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
 
         {vistaActual === "vacaciones" && (
-          <section className="panel">
-            <div className="panel-header">
-              <div>
-                <h2>Vacaciones</h2>
-                <p>Solicitudes, aprobacion y rechazo de vacaciones.</p>
-              </div>
-            </div>
-
-            <div className="settings-grid">
-              <form className="admin-form" onSubmit={solicitarVacaciones}>
-                <h2>Nueva solicitud</h2>
-                <select
-                  value={vacacionesForm.empleado_id}
-                  onChange={(event) =>
-                    setVacacionesForm({
-                      ...vacacionesForm,
-                      empleado_id: event.target.value,
-                    })
-                  }
-                >
-                  <option value="">Selecciona empleado</option>
-                  {empleados.map((empleado) => (
-                    <option key={empleado.id} value={empleado.id}>
-                      {empleado.nombre}
-                    </option>
-                  ))}
-                </select>
-                <div className="form-row">
-                  <input
-                    type="date"
-                    value={vacacionesForm.fecha_inicio}
-                    onChange={(event) =>
-                      setVacacionesForm({
-                        ...vacacionesForm,
-                        fecha_inicio: event.target.value,
-                      })
-                    }
-                  />
-                  <input
-                    type="date"
-                    value={vacacionesForm.fecha_fin}
-                    onChange={(event) =>
-                      setVacacionesForm({
-                        ...vacacionesForm,
-                        fecha_fin: event.target.value,
-                      })
-                    }
-                  />
+          <>
+            <Modal open={modalActivo === "nueva_vacacion"} onClose={() => { setModalActivo(null); setError(""); setVacacionesForm(emptyVacaciones); }} title="Nueva solicitud de vacaciones" error={modalActivo === "nueva_vacacion" ? error : ""}>
+              <form onSubmit={solicitarVacaciones}>
+                <div className="form-field"><label>Empleado</label>
+                  <select value={vacacionesForm.empleado_id} onChange={e => setVacacionesForm({...vacacionesForm, empleado_id: e.target.value})}>
+                    <option value="">Selecciona empleado</option>
+                    {empleados.map(emp => <option key={emp.id} value={emp.id}>{emp.nombre}</option>)}
+                  </select>
                 </div>
-                <input
-                  value={vacacionesForm.motivo}
-                  onChange={(event) =>
-                    setVacacionesForm({ ...vacacionesForm, motivo: event.target.value })
-                  }
-                  placeholder="Motivo"
-                />
-                <button
-                  type="submit"
-                  disabled={!empresaActivaId || !vacacionesForm.empleado_id}
-                >
-                  Solicitar vacaciones
-                </button>
+                <div className="form-row">
+                  <div className="form-field"><label>Fecha inicio</label><input type="date" value={vacacionesForm.fecha_inicio} onChange={e => setVacacionesForm({...vacacionesForm, fecha_inicio: e.target.value})} /></div>
+                  <div className="form-field"><label>Fecha fin</label><input type="date" value={vacacionesForm.fecha_fin} onChange={e => setVacacionesForm({...vacacionesForm, fecha_fin: e.target.value})} /></div>
+                </div>
+                <div className="form-field"><label>Motivo</label><input value={vacacionesForm.motivo} onChange={e => setVacacionesForm({...vacacionesForm, motivo: e.target.value})} placeholder="Descripcion del motivo" /></div>
+                <div className="modal-actions">
+                  <button type="submit" className="btn-primary" disabled={!empresaActivaId || !vacacionesForm.empleado_id}><Icon name="check" size={14} /> Enviar solicitud</button>
+                  <button type="button" className="btn-secondary" onClick={() => setModalActivo(null)}>Cancelar</button>
+                </div>
               </form>
+            </Modal>
 
+            <div className="module-header">
               <div>
-                <h2>Solicitudes</h2>
-                <DataTable
-                  columns={["Empleado", "Inicio", "Fin", "Dias", "Estado", "Accion"]}
-                  rows={vacaciones}
-                  renderRow={(solicitud) => [
-                    solicitud.empleado,
-                    new Date(solicitud.fecha_inicio).toLocaleDateString(),
-                    new Date(solicitud.fecha_fin).toLocaleDateString(),
-                    solicitud.dias_solicitados,
-                    solicitud.estado,
-                    solicitud.estado === "pendiente" ? (
-                      <div key={`${solicitud.id}-acciones`} className="inline-actions">
-                        <button
-                          className="table-action"
-                          onClick={() => void resolverVacaciones(solicitud.id, "aprobar")}
-                        >
-                          Aprobar
-                        </button>
-                        <button
-                          className="table-action"
-                          onClick={() => void resolverVacaciones(solicitud.id, "rechazar")}
-                        >
-                          Rechazar
-                        </button>
-                      </div>
-                    ) : (
-                      "-"
-                    ),
-                  ]}
-                />
+                <h1><Icon name="vacaciones" size={22} /> Vacaciones</h1>
+                <p>Solicitudes de ausencia, aprobacion y rechazo por empleado.</p>
+              </div>
+              <div className="module-header__actions">
+                <button className="btn-primary" onClick={() => { setVacacionesForm(emptyVacaciones); setModalActivo("nueva_vacacion"); }} disabled={!empresaActivaId}>
+                  <Icon name="plus" size={14} /> Nueva solicitud
+                </button>
               </div>
             </div>
-          </section>
+
+            <div className="panel">
+              <div className="table-toolbar">
+                <div className="search-box"><Icon name="search" size={14} /><input value={busquedaVacaciones} onChange={e => setBusquedaVacaciones(e.target.value)} placeholder="Buscar por empleado o estado..." /></div>
+                <span className="record-count">{vacacionesFiltradas.length} solicitudes</span>
+              </div>
+              <table className="data-table">
+                <thead><tr><th>Empleado</th><th>Fecha inicio</th><th>Fecha fin</th><th>Dias</th><th>Estado</th><th>Acciones</th></tr></thead>
+                <tbody>
+                  {vacacionesFiltradas.length === 0 ? (
+                    <tr><td colSpan={6} className="empty-state">No se encontraron solicitudes.</td></tr>
+                  ) : vacacionesFiltradas.map(sol => (
+                    <tr key={sol.id}>
+                      <td><strong>{sol.empleado}</strong></td>
+                      <td>{new Date(sol.fecha_inicio).toLocaleDateString()}</td>
+                      <td>{new Date(sol.fecha_fin).toLocaleDateString()}</td>
+                      <td>{sol.dias_solicitados} dias</td>
+                      <td>
+                        <span className={`badge ${sol.estado === "aprobada" ? "aprobado" : sol.estado === "rechazada" ? "rechazado" : "pendiente"}`}>
+                          {sol.estado}
+                        </span>
+                      </td>
+                      <td>
+                        {sol.estado === "pendiente" ? (
+                          <div className="inline-actions">
+                            <button className="btn-primary" style={{padding:"4px 10px",fontSize:"0.75rem"}} onClick={() => void resolverVacaciones(sol.id, "aprobar")}>Aprobar</button>
+                            <button className="btn-danger" style={{padding:"4px 10px",fontSize:"0.75rem"}} onClick={() => void resolverVacaciones(sol.id, "rechazar")}>Rechazar</button>
+                          </div>
+                        ) : "-"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
 
         {vistaActual === "reportes" && (
-          <section className="panel">
-            <h2>Reportes</h2>
-            <p>Reportes operativos filtrados por empresa.</p>
+          <>
+            <div className="module-header">
+              <div>
+                <h1><Icon name="reportes" size={22} /> Reportes</h1>
+                <p>Reportes operativos y exportacion a Excel por modulo.</p>
+              </div>
+            </div>
 
-            <div className="report-buttons">
-              {["ventas", "inventario", "compras", "empleados", "vacaciones"].map(
-                (tipo) => (
-                  <button
-                    key={tipo}
-                    className="secondary-button"
-                    onClick={() => void cargarReporteOperativo(tipo)}
-                  >
-                    Ver {tipo}
-                  </button>
-                )
-              )}
-              <button onClick={() => void descargarReporte("ventas")}>
-                Descargar ventas Excel
-              </button>
-
-              <button onClick={() => void descargarReporte("inventario")}>
-                Descargar inventario Excel
-              </button>
+            <div className="report-grid">
+              {[
+                { tipo: "ventas", label: "Ventas", desc: "Historial de ventas por fecha, canal y cliente.", icon: "ventas" },
+                { tipo: "inventario", label: "Inventario", desc: "Stock actual, alertas y movimientos registrados.", icon: "inventario" },
+                { tipo: "compras", label: "Compras", desc: "Ordenes de compra por proveedor y estado.", icon: "compras" },
+                { tipo: "empleados", label: "Empleados", desc: "Nomina, puestos y datos de personal activo.", icon: "empleados" },
+                { tipo: "vacaciones", label: "Vacaciones", desc: "Solicitudes aprobadas, rechazadas y pendientes.", icon: "vacaciones" },
+              ].map(({ tipo, label, desc, icon }) => (
+                <div key={tipo} className="report-card">
+                  <div className="report-card__icon"><Icon name={icon} size={28} /></div>
+                  <div className="report-card__info">
+                    <h3>{label}</h3>
+                    <p>{desc}</p>
+                  </div>
+                  <div className="report-card__actions">
+                    <button className="btn-secondary" onClick={() => void cargarReporteOperativo(tipo)}>Ver reporte</button>
+                    {(tipo === "ventas" || tipo === "inventario") && (
+                      <button className="btn-ghost" onClick={() => void descargarReporte(tipo)}>
+                        <Icon name="download" size={14} /> Excel
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
 
             {reporteActual && (
-              <section className="embedded-panel report-preview">
-                <h2>Reporte de {reporteActual.tipo}</h2>
+              <div className="panel" style={{marginTop:"1.5rem"}}>
+                <div className="table-toolbar">
+                  <h2 style={{margin:0,fontWeight:600,fontSize:"1rem"}}>Reporte de {reporteActual.tipo}</h2>
+                  <button className="btn-ghost" onClick={() => void descargarReporte(reporteActual.tipo)}>
+                    <Icon name="download" size={14} /> Exportar Excel
+                  </button>
+                </div>
                 <ReporteOperativoTable reporte={reporteActual} />
-              </section>
+              </div>
             )}
-          </section>
+          </>
         )}
 
         {vistaActual === "auditoria" && (
-          <section className="panel">
-            <h2>Auditoria</h2>
-            <p>Eventos recientes del sistema.</p>
-            <DataTable
-              columns={["Fecha", "Empresa", "Accion", "Modulo", "Detalle"]}
-              rows={eventosAuditoria}
-              renderRow={(evento) => [
-                new Date(evento.created_at).toLocaleString(),
-                evento.empresa || "-",
-                evento.accion,
-                evento.modulo || "-",
-                evento.detalle || "-",
-              ]}
-            />
-          </section>
+          <>
+            <div className="module-header">
+              <div>
+                <h1><Icon name="auditoria" size={22} /> Auditoria</h1>
+                <p>Registro de eventos del sistema para trazabilidad y control.</p>
+              </div>
+            </div>
+
+            <div className="panel">
+              <div className="table-toolbar">
+                <span className="record-count">{eventosAuditoria.length} eventos</span>
+              </div>
+              <table className="data-table">
+                <thead><tr><th>Fecha</th><th>Empresa</th><th>Usuario</th><th>Modulo</th><th>Accion</th><th>Detalle</th></tr></thead>
+                <tbody>
+                  {eventosAuditoria.length === 0 ? (
+                    <tr><td colSpan={6} className="empty-state">No hay eventos registrados.</td></tr>
+                  ) : eventosAuditoria.map((evt, i) => (
+                    <tr key={evt.id || i}>
+                      <td style={{whiteSpace:"nowrap"}}>{new Date(evt.created_at).toLocaleString()}</td>
+                      <td>{evt.empresa || "-"}</td>
+                      <td>{evt.usuario || "-"}</td>
+                      <td><span className="badge">{evt.modulo || "-"}</span></td>
+                      <td><strong>{evt.accion}</strong></td>
+                      <td style={{maxWidth:"260px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={evt.detalle}>{evt.detalle || "-"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
 
         {vistaActual === "ajustes" && puedeAdministrar && (
-          <section className="panel">
-            <div className="tabs">
-              {["empresas", "usuarios", "roles"].map((tab) => (
-                <button
-                  key={tab}
-                  className={tabAjustes === tab ? "active" : ""}
-                  onClick={() => setTabAjustes(tab)}
-                >
-                  {tab.charAt(0).toUpperCase() + tab.slice(1)}
-                </button>
+          <>
+            <Modal open={modalActivo === "nueva_empresa"} onClose={() => { setModalActivo(null); setError(""); setEmpresaForm(emptyEmpresa); }} title="Nueva empresa" error={modalActivo === "nueva_empresa" ? error : ""}>
+              <form onSubmit={crearEmpresa}>
+                <div className="form-row">
+                  <div className="form-field"><label>Nombre</label><input value={empresaForm.nombre} onChange={e => setEmpresaForm({...empresaForm, nombre: e.target.value})} placeholder="Nombre de la empresa" /></div>
+                  <div className="form-field"><label>NIT</label><input value={empresaForm.nit} onChange={e => setEmpresaForm({...empresaForm, nit: e.target.value})} placeholder="NIT" /></div>
+                </div>
+                <div className="form-row">
+                  <div className="form-field"><label>Telefono</label><input value={empresaForm.telefono} onChange={e => setEmpresaForm({...empresaForm, telefono: e.target.value})} placeholder="Telefono" /></div>
+                  <div className="form-field"><label>Email</label><input type="email" value={empresaForm.email} onChange={e => setEmpresaForm({...empresaForm, email: e.target.value})} placeholder="Email" /></div>
+                </div>
+                <div className="form-field"><label>Direccion</label><input value={empresaForm.direccion} onChange={e => setEmpresaForm({...empresaForm, direccion: e.target.value})} placeholder="Direccion" /></div>
+                <div className="modal-actions">
+                  <button type="submit" className="btn-primary"><Icon name="check" size={14} /> Crear empresa</button>
+                  <button type="button" className="btn-secondary" onClick={() => setModalActivo(null)}>Cancelar</button>
+                </div>
+              </form>
+            </Modal>
+
+            <Modal open={modalActivo === "nuevo_usuario"} onClose={() => { setModalActivo(null); setError(""); setUsuarioForm(emptyUsuario); }} title="Nuevo usuario" error={modalActivo === "nuevo_usuario" ? error : ""}>
+              <form onSubmit={crearUsuario}>
+                <div className="form-row">
+                  <div className="form-field"><label>Nombre</label><input value={usuarioForm.nombre} onChange={e => setUsuarioForm({...usuarioForm, nombre: e.target.value})} placeholder="Nombre completo" /></div>
+                  <div className="form-field"><label>Email</label><input type="email" value={usuarioForm.email} onChange={e => setUsuarioForm({...usuarioForm, email: e.target.value})} placeholder="Email" /></div>
+                </div>
+                <div className="form-row">
+                  <div className="form-field"><label>Contrasena</label><input type="password" value={usuarioForm.password} onChange={e => setUsuarioForm({...usuarioForm, password: e.target.value})} placeholder="Contrasena temporal" /></div>
+                  <div className="form-field"><label>Rol</label>
+                    <select value={usuarioForm.rol} onChange={e => setUsuarioForm({...usuarioForm, rol: e.target.value})}>
+                      {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+                    </select>
+                  </div>
+                </div>
+                <div className="form-field"><label>Empresas asignadas</label>
+                  <div className="checkbox-list">
+                    {empresas.map(emp => (
+                      <label key={emp.id}>
+                        <input type="checkbox" checked={usuarioForm.empresas.includes(emp.id)} onChange={() => {
+                          const next = usuarioForm.empresas.includes(emp.id)
+                            ? usuarioForm.empresas.filter(id => id !== emp.id)
+                            : [...usuarioForm.empresas, emp.id];
+                          setUsuarioForm({...usuarioForm, empresas: next});
+                        }} />
+                        {emp.nombre}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                <div className="modal-actions">
+                  <button type="submit" className="btn-primary"><Icon name="check" size={14} /> Crear usuario</button>
+                  <button type="button" className="btn-secondary" onClick={() => setModalActivo(null)}>Cancelar</button>
+                </div>
+              </form>
+            </Modal>
+
+            <div className="module-header">
+              <div>
+                <h1><Icon name="ajustes" size={22} /> Ajustes</h1>
+                <p>Configuracion de empresas, usuarios y permisos del sistema.</p>
+              </div>
+            </div>
+
+            <div className="tabs" style={{marginBottom:"1.5rem"}}>
+              {[["empresas","Empresas"],["usuarios","Usuarios"],["roles","Roles"]].map(([id, label]) => (
+                <button key={id} className={tabAjustes === id ? "active" : ""} onClick={() => setTabAjustes(id)}>{label}</button>
               ))}
             </div>
 
             {tabAjustes === "empresas" && (
-              <div className="settings-grid">
-                <form className="admin-form" onSubmit={crearEmpresa}>
-                  <h2>Nueva empresa</h2>
-                  <input
-                    value={empresaForm.nombre}
-                    onChange={(event) =>
-                      setEmpresaForm({ ...empresaForm, nombre: event.target.value })
-                    }
-                    placeholder="Nombre"
-                  />
-                  <input
-                    value={empresaForm.nit}
-                    onChange={(event) =>
-                      setEmpresaForm({ ...empresaForm, nit: event.target.value })
-                    }
-                    placeholder="NIT"
-                  />
-                  <input
-                    value={empresaForm.telefono}
-                    onChange={(event) =>
-                      setEmpresaForm({ ...empresaForm, telefono: event.target.value })
-                    }
-                    placeholder="Telefono"
-                  />
-                  <input
-                    value={empresaForm.email}
-                    onChange={(event) =>
-                      setEmpresaForm({ ...empresaForm, email: event.target.value })
-                    }
-                    placeholder="Email"
-                  />
-                  <input
-                    value={empresaForm.direccion}
-                    onChange={(event) =>
-                      setEmpresaForm({ ...empresaForm, direccion: event.target.value })
-                    }
-                    placeholder="Direccion"
-                  />
-                  <button type="submit">Crear empresa</button>
-                </form>
-
-                <div>
-                  <h2>Empresas</h2>
-                  <DataTable
-                    columns={["Nombre", "NIT", "Estado", "Accion"]}
-                    rows={empresas}
-                    renderRow={(empresa) => [
-                      empresa.nombre,
-                      empresa.nit || "-",
-                      <span key={empresa.id} className={`badge ${empresa.estado}`}>
-                        {empresa.estado}
-                      </span>,
-                      <button
-                        key={`${empresa.id}-accion`}
-                        className="table-action"
-                        onClick={() => void cambiarEstadoEmpresa(empresa)}
-                      >
-                        {empresa.estado === "activa" ? "Desactivar" : "Activar"}
-                      </button>,
-                    ]}
-                  />
+              <div className="panel">
+                <div className="table-toolbar">
+                  <span className="record-count">{empresas.length} empresas</span>
+                  <button className="btn-primary" onClick={() => { setEmpresaForm(emptyEmpresa); setModalActivo("nueva_empresa"); }}>
+                    <Icon name="plus" size={14} /> Nueva empresa
+                  </button>
                 </div>
+                <table className="data-table">
+                  <thead><tr><th>Nombre</th><th>NIT</th><th>Telefono</th><th>Email</th><th>Estado</th><th>Accion</th></tr></thead>
+                  <tbody>
+                    {empresas.length === 0 ? (
+                      <tr><td colSpan={6} className="empty-state">No hay empresas registradas.</td></tr>
+                    ) : empresas.map(emp => (
+                      <tr key={emp.id}>
+                        <td><strong>{emp.nombre}</strong></td>
+                        <td>{emp.nit || "-"}</td>
+                        <td>{emp.telefono || "-"}</td>
+                        <td>{emp.email || "-"}</td>
+                        <td><span className={`badge ${emp.estado === "activa" ? "activo" : "inactivo"}`}>{emp.estado}</span></td>
+                        <td>
+                          <button className={emp.estado === "activa" ? "btn-danger" : "btn-secondary"} style={{padding:"4px 10px",fontSize:"0.75rem"}} onClick={() => void cambiarEstadoEmpresa(emp)}>
+                            {emp.estado === "activa" ? "Desactivar" : "Activar"}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
 
             {tabAjustes === "usuarios" && (
-              <div className="settings-grid">
-                <form className="admin-form" onSubmit={crearUsuario}>
-                  <h2>Nuevo usuario</h2>
-                  <input
-                    value={usuarioForm.nombre}
-                    onChange={(event) =>
-                      setUsuarioForm({ ...usuarioForm, nombre: event.target.value })
-                    }
-                    placeholder="Nombre"
-                  />
-                  <input
-                    value={usuarioForm.email}
-                    onChange={(event) =>
-                      setUsuarioForm({ ...usuarioForm, email: event.target.value })
-                    }
-                    placeholder="Email"
-                  />
-                  <input
-                    type="password"
-                    value={usuarioForm.password}
-                    onChange={(event) =>
-                      setUsuarioForm({ ...usuarioForm, password: event.target.value })
-                    }
-                    placeholder="Contrasena temporal"
-                  />
-                  <select
-                    value={usuarioForm.rol}
-                    onChange={(event) =>
-                      setUsuarioForm({ ...usuarioForm, rol: event.target.value })
-                    }
-                  >
-                    {ROLES.map((rol) => (
-                      <option key={rol} value={rol}>
-                        {rol}
-                      </option>
-                    ))}
-                  </select>
-
-                  <div className="checkbox-list">
-                    {empresas.map((empresa) => (
-                      <label key={empresa.id}>
-                        <input
-                          type="checkbox"
-                          checked={usuarioForm.empresas.includes(empresa.id)}
-                          onChange={() => {
-                            const nextEmpresas = usuarioForm.empresas.includes(empresa.id)
-                              ? usuarioForm.empresas.filter((id) => id !== empresa.id)
-                              : [...usuarioForm.empresas, empresa.id];
-                            setUsuarioForm({
-                              ...usuarioForm,
-                              empresas: nextEmpresas,
-                            });
-                          }}
-                        />
-                        {empresa.nombre}
-                      </label>
-                    ))}
-                  </div>
-
-                  <button type="submit">Crear usuario</button>
-                </form>
-
-                <div>
-                  <h2>Usuarios</h2>
-                  <DataTable
-                    columns={["Nombre", "Email", "Rol", "Empresas", "Estado", "Accion"]}
-                    rows={usuarios}
-                    renderRow={(user) => [
-                      user.nombre,
-                      user.email,
-                      user.rol,
-                      user.empresas.map((empresa) => empresa.empresa).join(", ") || "-",
-                      user.activo ? "Activo" : "Inactivo",
-                      <button
-                        key={`${user.id}-accion`}
-                        className="table-action"
-                        onClick={() => void cambiarEstadoUsuario(user)}
-                      >
-                        {user.activo ? "Desactivar" : "Activar"}
-                      </button>,
-                    ]}
-                  />
+              <div className="panel">
+                <div className="table-toolbar">
+                  <span className="record-count">{usuarios.length} usuarios</span>
+                  <button className="btn-primary" onClick={() => { setUsuarioForm(emptyUsuario); setModalActivo("nuevo_usuario"); }}>
+                    <Icon name="plus" size={14} /> Nuevo usuario
+                  </button>
                 </div>
+                <table className="data-table">
+                  <thead><tr><th>Nombre</th><th>Email</th><th>Rol</th><th>Empresas</th><th>Estado</th><th>Accion</th></tr></thead>
+                  <tbody>
+                    {usuarios.length === 0 ? (
+                      <tr><td colSpan={6} className="empty-state">No hay usuarios registrados.</td></tr>
+                    ) : usuarios.map(usr => (
+                      <tr key={usr.id}>
+                        <td><strong>{usr.nombre}</strong></td>
+                        <td>{usr.email}</td>
+                        <td><span className="badge">{usr.rol}</span></td>
+                        <td>{usr.empresas?.map(e => e.empresa).join(", ") || "-"}</td>
+                        <td><span className={`badge ${usr.activo ? "activo" : "inactivo"}`}>{usr.activo ? "Activo" : "Inactivo"}</span></td>
+                        <td>
+                          <button className={usr.activo ? "btn-danger" : "btn-secondary"} style={{padding:"4px 10px",fontSize:"0.75rem"}} onClick={() => void cambiarEstadoUsuario(usr)}>
+                            {usr.activo ? "Desactivar" : "Activar"}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
 
             {tabAjustes === "roles" && (
-              <div>
-                <h2>Roles disponibles</h2>
-                <div className="role-grid">
-                  {ROLES.map((rol) => (
-                    <article key={rol} className="role-card">
-                      <strong>{rol}</strong>
-                      <span>
-                        {rol === "admin"
-                          ? "Administra empresas, usuarios y permisos."
-                          : "Acceso operativo segun empresas asignadas."}
-                      </span>
-                    </article>
-                  ))}
-                </div>
+              <div className="role-grid">
+                {ROLES.map(rol => (
+                  <article key={rol} className="role-card">
+                    <div className="role-card__icon"><Icon name="empleados" size={22} /></div>
+                    <strong>{rol}</strong>
+                    <span>{rol === "admin" ? "Administra empresas, usuarios y permisos del sistema." : "Acceso operativo a modulos segun empresas asignadas."}</span>
+                  </article>
+                ))}
               </div>
             )}
-          </section>
+          </>
         )}
+      </div>
       </section>
     </main>
   );

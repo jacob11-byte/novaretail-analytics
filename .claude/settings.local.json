@@ -14,7 +14,9 @@
       "Bash(node -e \"const fs=require\\('fs'\\); const s=fs.readFileSync\\('frontend/src/App.css','utf8'\\); const lines=s.split\\('\\\\n'\\); lines.forEach\\(\\(l,i\\)=>{ if\\(l.includes\\('.badge'\\) || l.includes\\('critica'\\) || l.includes\\('CRITICA'\\) || l.includes\\('.panel'\\) || l.includes\\('.metric-card'\\) || l.includes\\('.cards-grid'\\) || l.includes\\('.main-grid'\\)\\) console.log\\(i+1, l\\); }\\);\")",
       "Bash(npm run *)",
       "Bash(node -e \"const fs=require\\('fs'\\); const s=fs.readFileSync\\('frontend/src/App.jsx','utf8'\\); const lines=s.split\\('\\\\n'\\); lines.forEach\\(\\(l,i\\)=>{ if\\(l.includes\\('recharts'\\) || l.includes\\('AnalisisVisual'\\) || l.includes\\('analisis-visual'\\) || l.includes\\('ventas_por_fecha'\\)\\) console.log\\(i+1, l.trim\\(\\)\\); }\\);\")",
-      "Bash(node -e \"const fs=require\\('fs'\\); const s=fs.readFileSync\\('backend/src/server.js','utf8'\\); const lines=s.split\\('\\\\n'\\); lines.forEach\\(\\(l,i\\)=>{ if\\(l.includes\\('ventas_por_fecha'\\) || l.includes\\('ventasPorFecha'\\) || l.includes\\('ventasFechaEmpresa'\\)\\) console.log\\(i+1, l.trim\\(\\)\\); }\\);\")"
+      "Bash(node -e \"const fs=require\\('fs'\\); const s=fs.readFileSync\\('backend/src/server.js','utf8'\\); const lines=s.split\\('\\\\n'\\); lines.forEach\\(\\(l,i\\)=>{ if\\(l.includes\\('ventas_por_fecha'\\) || l.includes\\('ventasPorFecha'\\) || l.includes\\('ventasFechaEmpresa'\\)\\) console.log\\(i+1, l.trim\\(\\)\\); }\\);\")",
+      "Bash(node -e \"const fs=require\\('fs'\\); const s=fs.readFileSync\\('frontend/src/App.jsx','utf8'\\); const lines=s.split\\('\\\\n'\\); lines.forEach\\(\\(l,i\\)=>{ if\\(l.includes\\('if \\(!token\\)'\\) || l.includes\\('cargarSesion\\(\\)'\\) && l.includes\\('useEffect'\\)\\) console.log\\(i+1, l\\); }\\);\")",
+      "Bash(node -e \"const fs=require\\('fs'\\); const s=fs.readFileSync\\('frontend/src/App.jsx','utf8'\\); const lines=s.split\\('\\\\n'\\); lines.forEach\\(\\(l,i\\)=>{ if\\(i>=1270 && i<=1380\\) console.log\\(i+1, l\\); }\\);\")"
     ]
   }
 }
